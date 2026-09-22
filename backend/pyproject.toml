@@ -1,0 +1,13 @@
+[project]
+name = "aurora-cafe-backend"
+version = "1.0.0"
+description = "Synchronized Backend API & Database for Aurora Cafe POS (41 Modules)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.28.0",
+    "pydantic>=2.6.0",
+    "httpx>=0.28.1",
+    "python-multipart>=0.0.32",
+]

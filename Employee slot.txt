@@ -1,0 +1,31 @@
+
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><title>MOKA Point of Sale</title><link rel="manifest" href="/manifest.webmanifest"/><link href="https://fonts.googleapis.com/css?family=Lato:400,700,300,400italic" rel="stylesheet"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" id="viewport-meta"/><script>(function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        var f = d.getElementsByTagName(s)[0],
+          j = d.createElement(s),
+          dl = l != 'dataLayer' ? '&l=' + l : '';
+        j.async = true;
+        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, 'script', 'dataLayer', 'GTM-MP5NCRT');</script><script src="https://www.google.com/recaptcha/api.js?onload=recaptchaLoaded&render=explicit" async defer="defer"></script><link rel="icon" href="/favicon.ico"><script defer="defer" src="/app.86f0a68c6403f0f8ca9c.js"></script><script defer="defer" src="/remote-entry-BoLegacyApp.js"></script></head><body><noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MP5NCRT" height="0" width="0" style="display: none; visibility: hidden"></iframe></noscript><noscript>If you're seeing this message, that means <strong>JavaScript has been disabled on your browser</strong>, please <strong>enable JS</strong> to make this app work.</noscript><div id="app"></div><script src="https://www.googleadservices.com/pagead/conversion_async.js" charset="utf-8"></script><script>if (window.innerWidth >= 1024) {
+        window.$zopim ||
+          (function (d, s) {
+            var z = ($zopim = function (c) {
+                z._.push(c);
+              }),
+              $ = (z.s = d.createElement(s)),
+              e = d.getElementsByTagName(s)[0];
+            z.set = function (o) {
+              z.set._.push(o);
+            };
+            z._ = [];
+            z.set._ = [];
+            $.async = !0;
+            $.setAttribute('charset', 'utf-8');
+            $.src = 'https://v2.zopim.com/?2s0U2MpViKV3KqASl1CionyH0NnLWUu4';
+            z.t = +new Date();
+            $.type = 'text/javascript';
+            e.parentNode.insertBefore($, e);
+          })(document, 'script');
+      }</script></body></html>
