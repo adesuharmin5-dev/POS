@@ -1,0 +1,76 @@
+================================================================================
+PANDUAN LENGKAP CARA UPLOAD SISTEM POS KE INFINITYFREE (GRATIS)
+================================================================================
+
+Folder ini ("htdocs") sudah disiapkan khusus agar 100% kompatibel dengan server
+hosting InfinityFree (Apache + PHP 8 + MySQL).
+
+--------------------------------------------------------------------------------
+LANGKAH 1: UPLOAD FILE KE FILE MANAGER INFINITYFREE
+--------------------------------------------------------------------------------
+1. Buka dan login ke akun InfinityFree Anda: https://app.infinityfree.com
+2. Pilih akun hosting Anda yang sudah aktif, lalu klik tombol "File Manager".
+3. Di dalam File Manager, klik dua kali untuk membuka folder:
+   /htdocs
+4. Jika di dalam /htdocs terdapat file bawaan bernama "index2.html" atau "DO NOT UPLOAD HERE",
+   Anda boleh menghapus file tersebut.
+5. Anda bisa mengunggah dengan salah satu dari 2 cara berikut:
+   - CARA A (Paling Cepat): Upload file "htdocs.zip" yang sudah kami sediakan,
+     lalu di File Manager klik kanan pada file htdocs.zip -> pilih "Extract".
+   - CARA B (Manual / FileZilla FTP): Salin dan upload seluruh isi dari folder
+     "htdocs" ini langsung ke dalam folder /htdocs di InfinityFree.
+
+--------------------------------------------------------------------------------
+LANGKAH 2: IMPORT DATABASE MYSQL (PHPMYADMIN)
+--------------------------------------------------------------------------------
+Agar seluruh menu, kategori, akun kasir, dan transaksi tersimpan permanen di database:
+1. Kembali ke Control Panel InfinityFree (cPanel).
+2. Klik menu "MySQL Databases".
+3. Buat database baru, misalnya beri nama "pos" atau "cafe".
+4. Catat 4 informasi yang tertera di halaman MySQL Databases tersebut:
+   - MySQL Hostname : (contoh: sql105.infinityfree.com)
+   - MySQL Username : (contoh: epiz_12345678)
+   - MySQL Password : (password akun cPanel Anda)
+   - Database Name  : (contoh: epiz_12345678_cafe)
+5. Masuk ke "phpMyAdmin" melalui tombol phpMyAdmin di baris database yang baru dibuat.
+6. Klik nama database Anda di sebelah kiri.
+7. Klik tab "Import" di menu atas.
+8. Klik "Choose File" dan pilih file:
+   database_infinityfree.sql
+   (file ini sudah ada di dalam folder htdocs)
+9. Scroll ke bawah dan klik tombol "Go" / "Kirim".
+   Database dan seluruh data awal berhasil terpasang!
+
+--------------------------------------------------------------------------------
+LANGKAH 3: MENGHUBUNGKAN API KE DATABASE (api/config.php)
+--------------------------------------------------------------------------------
+1. Di File Manager InfinityFree, buka folder "api", lalu edit file "config.php".
+2. Masukkan 4 informasi yang Anda catat pada Langkah 2:
+   define('DB_HOST', 'sql105.infinityfree.com'); // ganti sesuai hostname Anda
+   define('DB_USER', 'epiz_12345678');           // ganti sesuai username Anda
+   define('DB_PASS', 'password_anda');           // ganti sesuai password cPanel Anda
+   define('DB_NAME', 'epiz_12345678_cafe');      // ganti sesuai database Anda
+3. Klik "Save" / "Simpan".
+
+*CATATAN: Jika Anda belum sempat mengatur MySQL, aplikasi tetap bisa langsung dibuka
+karena sudah dilengkapi sistem Fallback Mode otomatis.
+
+--------------------------------------------------------------------------------
+LANGKAH 4: BUKA DAN GUNAKAN APLIKASI
+--------------------------------------------------------------------------------
+1. Buka domain gratis Anda di browser, contoh:
+   http://namaanda.infinityfreeapp.com
+   atau
+   http://namaanda.infinityfreeapp.com/pos
+
+2. Akun Demo Bawaan:
+   - Login Owner / Admin :
+     Username : admin
+     Password : admin123
+   - Login Kasir / Barista :
+     Username : kasir
+     Password : kasir123
+   - PIN Kunci Layar Kasir : 1122, 1234, atau 5678
+
+Selamat! Sistem POS Teras Manis / Aurora Cafe Anda sekarang sudah ONLINE di internet!
+================================================================================

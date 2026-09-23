@@ -53,14 +53,26 @@ def get_dashboard_summary(conn: sqlite3.Connection, outlet_id: int) -> dict:
     """, (outlet_id,))
     tables_summary = cursor.fetchone()
 
+    today_sales = float(today_row["total_sales"]) if today_row and today_row["total_sales"] is not None else 0.0
+    trx_count = int(today_row["trx_count"]) if today_row and today_row["trx_count"] is not None else 0
+
+    if trx_count == 0:
+        today_sales = 0.0
+
     return {
         "outlet_id": outlet_id,
-        "today_sales": today_row["total_sales"],
-        "today_transactions": today_row["trx_count"],
+        "today_sales": today_sales,
+        "today_transactions": trx_count,
+        "total_sales_today": today_sales,
+        "transaction_count_today": trx_count,
         "active_shift": dict(active_shift) if active_shift else None,
         "top_selling_items": top_items,
         "low_stock_alerts": low_stocks,
-        "tables": dict(tables_summary) if tables_summary else {}
+        "tables": dict(tables_summary) if tables_summary else {
+            "total_tables": 0,
+            "occupied_tables": 0,
+            "available_tables": 0
+        }
     }
 
 def get_sales_report(conn: sqlite3.Connection, outlet_id: int, start_date: str = None, end_date: str = None) -> dict:

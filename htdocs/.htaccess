@@ -1,0 +1,25 @@
+# Apache Configuration for InfinityFree / Shared Hosting
+DirectoryIndex index.html index.php
+
+# Enable URL Rewriting
+RewriteEngine On
+
+# Ensure /pos routes to pos.html
+RewriteRule ^pos/?$ pos.html [QSA,L]
+
+# Route all /api requests to api/index.php
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+RewriteRule ^api$ api/index.php [QSA,L]
+
+# Prevent directory browsing
+Options -Indexes
+
+# Caching for static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
