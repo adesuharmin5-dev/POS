@@ -2972,15 +2972,15 @@ input, select, textarea {
 
 .landing-login-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 430px;
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-md);
-  padding: 2rem 1.75rem;
-  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-lg);
+  padding: 2.25rem 2rem;
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
   position: relative;
 }
 
@@ -3136,12 +3136,12 @@ input, select, textarea {
 
 .btn-landing-submit {
   width: 100%;
-  padding: 0.8rem 1.5rem;
+  padding: 0.85rem 1.5rem;
   background: var(--primary);
   color: #FFFFFF;
   border: 1px solid var(--primary-dark);
   border-radius: var(--radius-sm);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -3150,7 +3150,8 @@ input, select, textarea {
   gap: 0.5rem;
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
-  min-height: 44px;
+  min-height: 48px;
+  margin-top: 0.25rem;
 }
 
 .btn-landing-submit:hover {
@@ -3279,12 +3280,12 @@ input, select, textarea {
 }
 
 .landing-footer-note {
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   color: var(--text-muted);
-  line-height: 1.45;
+  line-height: 1.5;
   text-align: center;
   border-top: 1px solid var(--border-subtle);
-  padding-top: 0.85rem;
+  padding-top: 1rem;
 }
 
 /* ============================================================
