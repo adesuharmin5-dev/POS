@@ -1,6 +1,8 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/cpwehob5991/public_html/pos/
+    - export DEPLOYPATH=/home/cpwehob5991/public_html/
     - /bin/mkdir -p $DEPLOYPATH
     - /bin/cp -R htdocs/* $DEPLOYPATH
+    - /bin/mkdir -p $DEPLOYPATH/pos/
+    - /bin/cp -R htdocs/* $DEPLOYPATH/pos/
