@@ -4,7 +4,7 @@
 // ==========================================================================
 
 let state = {
-  activeView: 'view-pos',
+  activeView: 'view-dashboard',
   activeOutletId: 1,
   activeBrandId: 1,
   brand: null,
@@ -35,7 +35,12 @@ let state = {
   storeSettings: null,
   receiptSettings: null,
   accountUser: null,
-  accountToken: null
+  accountToken: null,
+  dashPeriod: 'today',
+  dashStartDate: null,
+  dashEndDate: null,
+  dashCategoryFilter: 'all',
+  dashCachedData: null
 };
 
 // ==========================================================================
@@ -127,7 +132,7 @@ function parseRouteFromHashOrStorage() {
     };
   }
 
-  return { viewId: 'view-pos', subTab: null };
+  return { viewId: 'view-dashboard', subTab: null };
 }
 
 function applyViewUI(viewId, subTab = null) {
@@ -253,6 +258,21 @@ function updateAccountHeaderUI() {
   const pinAccEl = document.getElementById('pin-account-name');
   if (pinAccEl) {
     pinAccEl.textContent = `Sesi Toko: ${user.name} (${user.role || 'Admin'})`;
+  }
+
+  const sidebarName = document.getElementById('sidebar-cashier-name');
+  if (sidebarName) {
+    sidebarName.textContent = user.name || 'ade suharmin';
+  }
+
+  const dropdownFullName = document.getElementById('dropdown-full-name');
+  if (dropdownFullName) {
+    dropdownFullName.textContent = user.name || 'Ade Suharmin';
+  }
+
+  const dropdownRoleTitle = document.getElementById('dropdown-role-title');
+  if (dropdownRoleTitle) {
+    dropdownRoleTitle.textContent = user.role || 'Store Manager / Owner';
   }
 }
 
@@ -676,6 +696,11 @@ function updateCashierBadgeUI(user) {
   const sidebarRole = document.getElementById('sidebar-cashier-role');
   if (sidebarRole) sidebarRole.textContent = role;
 
+  const dropdownFullName = document.getElementById('dropdown-full-name');
+  if (dropdownFullName) dropdownFullName.textContent = user.name;
+  const dropdownRoleTitle = document.getElementById('dropdown-role-title');
+  if (dropdownRoleTitle) dropdownRoleTitle.textContent = role;
+
   // Legacy badges
   const nameEl = document.getElementById('cashier-name-badge');
   const roleEl = document.getElementById('cashier-role-badge');
@@ -999,24 +1024,33 @@ function renderProducts(items) {
     return;
   }
 
-  grid.innerHTML = items.map(item => `
-    <div class="product-card" onclick="handleItemClick(${item.id})">
-      <div class="product-img-wrapper">
-        <img src="${item.image_url || '/static/img/coffee.jpg'}" alt="${item.name}" loading="lazy" onerror="this.src='/static/img/coffee.jpg'" />
-        <span class="product-badge">${item.category_name || 'Roastery'}</span>
-      </div>
-      <div class="product-details">
-        <div>
-          <h4 class="product-title">${item.name}</h4>
-          <p class="product-desc">${item.description || 'Racikan istimewa biji kopi pilihan dengan cita rasa khas Aurora.'}</p>
+  grid.innerHTML = (items || []).map(item => {
+    const rawPrice = item.price;
+    const price = (rawPrice !== null && rawPrice !== undefined && rawPrice !== '' && !isNaN(Number(rawPrice))) ? Number(rawPrice) : 0;
+    const itemName = (item.name !== null && item.name !== undefined && item.name !== '' && item.name !== 'undefined' && item.name !== 'NaN') ? item.name : '0';
+    const catName = (item.category_name !== null && item.category_name !== undefined && item.category_name !== '' && item.category_name !== 'undefined' && item.category_name !== 'NaN') ? item.category_name : '0';
+    const desc = item.description || 'Racikan istimewa biji kopi pilihan dengan cita rasa khas Aurora.';
+    const img = item.image_url || '/static/img/coffee.jpg';
+
+    return `
+      <div class="product-card" onclick="handleItemClick(${item.id})">
+        <div class="product-img-wrapper">
+          <img src="${img}" alt="${itemName}" loading="lazy" onerror="this.src='/static/img/coffee.jpg'" />
+          <span class="product-badge">${catName}</span>
         </div>
-        <div class="product-footer">
-          <span class="product-price">${api.formatRupiah(item.price)}</span>
-          <button class="btn-add-item" onclick="event.stopPropagation(); handleItemClick(${item.id})" title="Pilih ukuran & tambah ke keranjang">+</button>
+        <div class="product-details">
+          <div>
+            <h4 class="product-title">${itemName}</h4>
+            <p class="product-desc">${desc}</p>
+          </div>
+          <div class="product-footer">
+            <span class="product-price">${api.formatRupiah(price)}</span>
+            <button class="btn-add-item" onclick="event.stopPropagation(); handleItemClick(${item.id})" title="Pilih ukuran & tambah ke keranjang">+</button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // ==========================================================================
@@ -1103,13 +1137,14 @@ function openModifierModal(item) {
                 desc = 'Porsi Maksimal Extra';
               }
 
+              const addPrice = (opt.additional_price !== null && opt.additional_price !== undefined && !isNaN(Number(opt.additional_price))) ? Number(opt.additional_price) : 0;
               return `
                 <div class="size-card ${optIdx === 0 ? 'selected' : ''}" onclick="selectSizeOptionCard(this, '${opt.id}', 'mod_${mod.id}')">
-                  <input type="radio" name="mod_${mod.id}" value="${opt.id}" data-name="${opt.name}" data-price="${opt.additional_price}" data-group="${mod.name}" ${optIdx === 0 ? 'checked' : ''} />
+                  <input type="radio" name="mod_${mod.id}" value="${opt.id}" data-name="${opt.name || '0'}" data-price="${addPrice}" data-group="${mod.name || '0'}" ${optIdx === 0 ? 'checked' : ''} />
                   <div class="size-card-icon">${defaultIcon}</div>
-                  <div class="size-card-name">${opt.name.replace(/\(\+Rp.*?\)/i, '').trim()}</div>
+                  <div class="size-card-name">${(opt.name || '0').replace(/\(\+Rp.*?\)/i, '').trim()}</div>
                   <div class="size-card-desc">${desc}</div>
-                  <div class="size-card-price">${opt.additional_price > 0 ? `+${api.formatRupiah(opt.additional_price)}` : 'Termasuk'}</div>
+                  <div class="size-card-price">${addPrice > 0 ? `+${api.formatRupiah(addPrice)}` : 'Termasuk'}</div>
                 </div>
               `;
             }).join('')}
@@ -1122,19 +1157,21 @@ function openModifierModal(item) {
       return `
         <div class="modifier-group">
           <div class="modifier-group-title">
-            <span>${groupIcon} ${mod.name}</span>
+            <span>${groupIcon} ${mod.name || '0'}</span>
             <span class="modifier-group-badge">${isSingle ? 'Pilih 1' : 'Bisa Pilih Lebih'}</span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-            ${mod.options.map((opt, optIdx) => `
+            ${(mod.options || []).map((opt, optIdx) => {
+              const optAddPrice = (opt.additional_price !== null && opt.additional_price !== undefined && !isNaN(Number(opt.additional_price))) ? Number(opt.additional_price) : 0;
+              return `
               <label class="mod-option-row ${(isSingle && optIdx === 0) ? 'selected' : ''}" onclick="handleOptionRowClick(this)">
                 <div class="mod-option-left">
-                  <input type="${isSingle ? 'radio' : 'checkbox'}" name="mod_${mod.id}" value="${opt.id}" data-name="${opt.name}" data-price="${opt.additional_price}" data-group="${mod.name}" class="mod-option-input" ${(isSingle && optIdx === 0) ? 'checked' : ''} onchange="updateModifierModalPrice()" />
-                  <span class="mod-option-name">${opt.name}</span>
+                  <input type="${isSingle ? 'radio' : 'checkbox'}" name="mod_${mod.id}" value="${opt.id}" data-name="${opt.name || '0'}" data-price="${optAddPrice}" data-group="${mod.name || '0'}" class="mod-option-input" ${(isSingle && optIdx === 0) ? 'checked' : ''} onchange="updateModifierModalPrice()" />
+                  <span class="mod-option-name">${opt.name || '0'}</span>
                 </div>
-                <span class="mod-option-price">${opt.additional_price > 0 ? `+${api.formatRupiah(opt.additional_price)}` : 'Gratis'}</span>
+                <span class="mod-option-price">${optAddPrice > 0 ? `+${api.formatRupiah(optAddPrice)}` : 'Gratis'}</span>
               </label>
-            `).join('')}
+            `;}).join('')}
           </div>
         </div>
       `;
@@ -1142,13 +1179,14 @@ function openModifierModal(item) {
   }).join('');
 
   // Live Price Bar
+  const itemPrice = (item.price !== null && item.price !== undefined && !isNaN(Number(item.price))) ? Number(item.price) : 0;
   html += `
     <div class="mod-modal-price-bar">
       <div>
         <div class="mod-live-label">Total Harga Item</div>
         <div class="mod-live-breakdown" id="mod-price-breakdown">Harga Dasar + Pilihan Ukuran</div>
       </div>
-      <div class="mod-live-total" id="mod-price-total">${api.formatRupiah(item.price)}</div>
+      <div class="mod-live-total" id="mod-price-total">${api.formatRupiah(itemPrice)}</div>
     </div>
   `;
 
@@ -1192,11 +1230,13 @@ function updateModifierModalPrice() {
   const body = document.getElementById('mod-modal-body');
   if (!body) return;
 
-  const basePrice = state.activeItemForModifier.price;
+  const rawBase = state.activeItemForModifier.price;
+  const basePrice = (rawBase !== null && rawBase !== undefined && !isNaN(Number(rawBase))) ? Number(rawBase) : 0;
   let addedPrice = 0;
 
   body.querySelectorAll('input:checked').forEach(input => {
-    const p = parseFloat(input.getAttribute('data-price')) || 0;
+    const rawP = input.getAttribute('data-price');
+    const p = (rawP !== null && rawP !== undefined && !isNaN(Number(rawP))) ? Number(rawP) : 0;
     addedPrice += p;
   });
 
@@ -1239,28 +1279,38 @@ function confirmModifierAddToCart() {
 }
 
 function addToCart(item, selectedModifiers) {
-  const modTotal = selectedModifiers.reduce((acc, m) => acc + m.additional_price, 0);
-  const modKey = selectedModifiers.map(m => m.modifier_option_id).sort().join('-');
+  if (!item) return;
+  const mods = Array.isArray(selectedModifiers) ? selectedModifiers : [];
+  const modTotal = mods.reduce((acc, m) => {
+    const rawP = m.additional_price;
+    const p = (rawP !== null && rawP !== undefined && !isNaN(Number(rawP))) ? Number(rawP) : 0;
+    return acc + p;
+  }, 0);
+  const modKey = mods.map(m => m.modifier_option_id).sort().join('-');
   const cartKey = `${item.id}_${modKey}`;
+
+  const rawBase = item.price;
+  const basePrice = (rawBase !== null && rawBase !== undefined && !isNaN(Number(rawBase))) ? Number(rawBase) : 0;
+  const unitPrice = basePrice + modTotal;
 
   const existing = state.cart.find(c => c.cartKey === cartKey);
   if (existing) {
-    existing.quantity += 1;
+    existing.quantity = (Number(existing.quantity) || 0) + 1;
   } else {
     state.cart.push({
       cartKey,
       item_id: item.id,
-      name: item.name,
-      base_price: item.price,
-      unit_price: item.price + modTotal,
+      name: item.name || '0',
+      base_price: basePrice,
+      unit_price: unitPrice,
       quantity: 1,
-      modifiers: selectedModifiers,
+      modifiers: mods,
       notes: ''
     });
   }
 
   renderCart();
-  api.showToast(`Ditambahkan: ${item.name}`);
+  api.showToast(`Ditambahkan: ${item.name || 'Menu'}`);
 }
 
 function updateCartQty(cartKey, delta) {
@@ -1310,73 +1360,87 @@ function renderCart() {
   const totalEl = document.getElementById('cart-total');
   const countBadge = document.getElementById('cart-count-badge');
 
-  const totalQty = state.cart.reduce((sum, i) => sum + i.quantity, 0);
-  countBadge.innerText = `${totalQty} item`;
+  const totalQty = (state.cart || []).reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+  if (countBadge) countBadge.innerText = `${totalQty || 0} item`;
 
-  if (state.cart.length === 0) {
-    container.innerHTML = `
-      <div class="empty-cart-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="9" cy="21" r="1"></circle>
-          <circle cx="20" cy="21" r="1"></circle>
-          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-        </svg>
-        <p style="font-weight:600;font-size:0.95rem;">Keranjang Masih Kosong</p>
-        <p style="font-size:0.8rem;color:var(--text-muted);">Pilih menu dari katalog untuk memulai pesanan kasir.</p>
-      </div>
-    `;
-    subtotalEl.innerText = api.formatRupiah(0);
+  if (!state.cart || state.cart.length === 0) {
+    if (container) {
+      container.innerHTML = `
+        <div class="empty-cart-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="9" cy="21" r="1"></circle>
+            <circle cx="20" cy="21" r="1"></circle>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+          </svg>
+          <p style="font-weight:600;font-size:0.95rem;">Keranjang Masih Kosong</p>
+          <p style="font-size:0.8rem;color:var(--text-muted);">Pilih menu dari katalog untuk memulai pesanan kasir.</p>
+        </div>
+      `;
+    }
+    if (subtotalEl) subtotalEl.innerText = api.formatRupiah(0);
     if (discountRow) discountRow.style.display = 'none';
-    taxEl.innerText = api.formatRupiah(0);
-    gratuityEl.innerText = api.formatRupiah(0);
-    totalEl.innerText = api.formatRupiah(0);
-    checkoutBtn.disabled = true;
+    if (taxEl) taxEl.innerText = api.formatRupiah(0);
+    if (gratuityEl) gratuityEl.innerText = api.formatRupiah(0);
+    if (totalEl) totalEl.innerText = api.formatRupiah(0);
+    if (checkoutBtn) checkoutBtn.disabled = true;
     return;
   }
 
-  container.innerHTML = state.cart.map(c => `
-    <div class="cart-item">
-      <div class="cart-item-top">
-        <div style="flex:1;">
-          <div class="cart-item-title">${c.name}</div>
-          ${c.modifiers && c.modifiers.length > 0 ? `
-            <div class="cart-mod-pills">
-              ${c.modifiers.map(m => {
-                const isSize = m.name.toLowerCase().includes('regular') || m.name.toLowerCase().includes('large') || m.name.toLowerCase().includes('jumbo') || (m.group_name && (m.group_name.toLowerCase().includes('ukuran') || m.group_name.toLowerCase().includes('size')));
-                return isSize 
-                  ? `<span class="cart-size-badge">🥤 ${m.name.replace(/\(\+Rp.*?\)/i, '').trim()}</span>`
-                  : `<span class="cart-mod-badge">✨ ${m.name}</span>`;
-              }).join('')}
+  if (container) {
+    container.innerHTML = state.cart.map(c => {
+      const cQty = Number(c.quantity) || 0;
+      const cUnit = Number(c.unit_price) || 0;
+      const itemSubtotal = cQty * cUnit;
+      return `
+        <div class="cart-item">
+          <div class="cart-item-top">
+            <div style="flex:1;">
+              <div class="cart-item-title">${c.name || '0'}</div>
+              ${c.modifiers && c.modifiers.length > 0 ? `
+                <div class="cart-mod-pills">
+                  ${c.modifiers.map(m => {
+                    const mName = m.name || '0';
+                    const isSize = mName.toLowerCase().includes('regular') || mName.toLowerCase().includes('large') || mName.toLowerCase().includes('jumbo') || (m.group_name && (m.group_name.toLowerCase().includes('ukuran') || m.group_name.toLowerCase().includes('size')));
+                    return isSize 
+                      ? `<span class="cart-size-badge">🥤 ${mName.replace(/\(\+Rp.*?\)/i, '').trim()}</span>`
+                      : `<span class="cart-mod-badge">✨ ${mName}</span>`;
+                  }).join('')}
+                </div>
+              ` : ''}
             </div>
-          ` : ''}
+            <button onclick="updateCartQty('${c.cartKey}', -${cQty})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;line-height:1;padding:2px 6px;" title="Hapus item">&times;</button>
+          </div>
+          <div class="cart-item-bottom">
+            <div class="qty-control">
+              <button class="qty-btn" onclick="updateCartQty('${c.cartKey}', -1)">-</button>
+              <span class="qty-num">${cQty}</span>
+              <button class="qty-btn" onclick="updateCartQty('${c.cartKey}', 1)">+</button>
+            </div>
+            <div class="cart-item-total">${api.formatRupiah(itemSubtotal)}</div>
+          </div>
         </div>
-        <button onclick="updateCartQty('${c.cartKey}', -${c.quantity})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;line-height:1;padding:2px 6px;" title="Hapus item">&times;</button>
-      </div>
-      <div class="cart-item-bottom">
-        <div class="qty-control">
-          <button class="qty-btn" onclick="updateCartQty('${c.cartKey}', -1)">-</button>
-          <span class="qty-num">${c.quantity}</span>
-          <button class="qty-btn" onclick="updateCartQty('${c.cartKey}', 1)">+</button>
-        </div>
-        <div class="cart-item-total">${api.formatRupiah(c.unit_price * c.quantity)}</div>
-      </div>
-    </div>
-  `).join('');
+      `;
+    }).join('');
+  }
 
   // Calculations
-  const subtotal = state.cart.reduce((sum, i) => sum + (i.unit_price * i.quantity), 0);
+  const subtotal = (state.cart || []).reduce((sum, i) => sum + ((Number(i.unit_price) || 0) * (Number(i.quantity) || 0)), 0);
   let discount = 0;
   if (state.appliedPromo) {
-    discount = Math.min(subtotal, state.appliedPromo.discount_amount || 0);
+    const rawDisc = state.appliedPromo.discount_amount;
+    const discAmount = (rawDisc !== null && rawDisc !== undefined && !isNaN(Number(rawDisc))) ? Number(rawDisc) : 0;
+    discount = Math.min(subtotal, discAmount);
   }
 
   const taxableAmount = Math.max(0, subtotal - discount);
   const gratuity = Math.round(taxableAmount * 0.05); // 5% Service
   const taxCfg = getActiveTaxConfig();
-  const tax = taxCfg.enabled ? Math.round((taxableAmount + gratuity) * (taxCfg.rate / 100)) : 0;
+  const rawTaxRate = Number(taxCfg.rate);
+  const taxRate = (!isNaN(rawTaxRate) && rawTaxRate > 0) ? rawTaxRate : 0;
+  const tax = taxCfg.enabled ? Math.round((taxableAmount + gratuity) * (taxRate / 100)) : 0;
   const grandTotal = taxableAmount + gratuity + tax;
 
-  subtotalEl.innerText = api.formatRupiah(subtotal);
+  if (subtotalEl) subtotalEl.innerText = api.formatRupiah(subtotal);
 
   if (discountRow && discountEl) {
     if (discount > 0) {
@@ -1394,11 +1458,12 @@ function renderCart() {
 
   const cartTaxLabel = document.getElementById('cart-tax-label');
   if (cartTaxLabel) {
-    cartTaxLabel.innerText = `Pajak (${taxCfg.name} ${taxCfg.rate}%):`;
+    cartTaxLabel.innerText = `Pajak (${taxCfg.name} ${taxRate}%):`;
   }
-  taxEl.innerText = api.formatRupiah(tax);
-  totalEl.innerText = api.formatRupiah(grandTotal);
-  checkoutBtn.disabled = false;
+  if (taxEl) taxEl.innerText = api.formatRupiah(tax);
+  if (gratuityEl) gratuityEl.innerText = api.formatRupiah(gratuity);
+  if (totalEl) totalEl.innerText = api.formatRupiah(grandTotal);
+  if (checkoutBtn) checkoutBtn.disabled = false;
 }
 
 function getActiveTaxConfig() {
@@ -1587,13 +1652,13 @@ function showReceiptModal(trx) {
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:6px;margin:0.6rem 0;">
-      ${trx.items.map(i => `
+      ${(trx.items || []).map(i => `
         <div class="receipt-line" style="font-size:0.84rem;align-items:flex-start;">
           <div>
-            <span>${i.quantity}x ${i.name}</span>
+            <span>${i.quantity || 0}x ${i.name || '0'}</span>
             ${i.modifiers && i.modifiers.length > 0 ? `
               <div style="font-size:0.74rem;color:#78716c;margin-top:2px;">
-                ${i.modifiers.map(m => m.name.replace(/\(\+Rp.*?\)/i, '').trim()).join(', ')}
+                ${i.modifiers.map(m => (m.name || '0').replace(/\(\+Rp.*?\)/i, '').trim()).join(', ')}
               </div>
             ` : ''}
           </div>
@@ -1603,8 +1668,8 @@ function showReceiptModal(trx) {
     </div>
     <div style="border-top:1px dashed #78716c;padding-top:8px;display:flex;flex-direction:column;gap:4px;font-size:0.82rem;">
       <div class="receipt-line"><span>Subtotal:</span><span>${api.formatRupiah(trx.subtotal)}</span></div>
-      ${trx.discount_amount > 0 ? `<div class="receipt-line" style="color:#059669;"><span>Diskon:</span><span>- ${api.formatRupiah(trx.discount_amount)}</span></div>` : ''}
-      ${(isTaxEnabled && showTaxOnReceipt && trx.tax_amount > 0) ? `
+      ${(Number(trx.discount_amount) || 0) > 0 ? `<div class="receipt-line" style="color:#059669;"><span>Diskon:</span><span>- ${api.formatRupiah(trx.discount_amount)}</span></div>` : ''}
+      ${(isTaxEnabled && showTaxOnReceipt && (Number(trx.tax_amount) || 0) > 0) ? `
         <div class="receipt-line">
           <span>${rs.tax_name || 'PB1'} (${rs.tax_rate ?? 10}%):</span>
           <span>${api.formatRupiah(trx.tax_amount)}</span>
@@ -1613,7 +1678,7 @@ function showReceiptModal(trx) {
       <div class="receipt-line" style="font-size:1.1rem;font-weight:800;margin-top:4px;border-top:1px solid #1c1917;padding-top:4px;">
         <span>TOTAL:</span><span>${api.formatRupiah(trx.total_amount)}</span>
       </div>
-      <div class="receipt-line" style="margin-top:2px;"><span>Metode Bayar:</span><span>${trx.payment_method}</span></div>
+      <div class="receipt-line" style="margin-top:2px;"><span>Metode Bayar:</span><span>${trx.payment_method || '0'}</span></div>
       ${trx.payment_method === 'Cash' ? `
         <div class="receipt-line"><span>Tunai Diterima:</span><span>${api.formatRupiah(trx.cash_received)}</span></div>
         <div class="receipt-line" style="font-weight:bold;color:#059669;"><span>Kembalian:</span><span>${api.formatRupiah(trx.change_amount)}</span></div>
@@ -1634,104 +1699,359 @@ function closeReceiptModal() {
 }
 
 // ==========================================================================
-// Dashboard Loader
+// Dashboard Loader (Modern B2B Analytics ala Moka POS Backoffice)
 // ==========================================================================
 async function loadDashboard() {
   try {
-    const data = (await api.getDashboard(state.activeOutletId)) || {};
+    const period = state.dashPeriod || 'today';
+    const data = (await api.getDashboard(state.activeOutletId || 1, period, state.dashStartDate, state.dashEndDate)) || {};
+    state.dashCachedData = data;
 
-    // Jika tidak ada transaksi / nilai kosong / tidak valid, set ke 0
-    const rawSales = data.today_sales ?? data.total_sales_today ?? data.total_sales ?? 0;
-    let todaySales = Number(rawSales);
-    if (!isFinite(todaySales) || isNaN(todaySales)) {
-      todaySales = 0;
-    }
+    // Financial KPIs with safe fallback to 0 (Strict Anti-Slop: No NaN or undefined)
+    const grossSales = Number(data.gross_sales ?? data.today_sales ?? data.total_sales ?? 0);
+    const safeGrossSales = (isFinite(grossSales) && !isNaN(grossSales)) ? grossSales : 0;
 
-    const rawTrx = data.today_transactions ?? data.transaction_count_today ?? data.total_transactions ?? data.trx_count ?? 0;
-    let todayTrx = Number(rawTrx);
-    if (!isFinite(todayTrx) || isNaN(todayTrx)) {
-      todayTrx = 0;
-    }
+    const netSales = Number(data.net_sales ?? safeGrossSales);
+    const safeNetSales = (isFinite(netSales) && !isNaN(netSales)) ? netSales : 0;
 
-    // Jika tidak ada transaksi (total transaksi 0), omzet hari ini otomatis 0
-    if (todayTrx === 0) {
-      todaySales = 0;
-    }
+    const grossProfit = Number(data.gross_profit ?? 0);
+    const safeGrossProfit = (isFinite(grossProfit) && !isNaN(grossProfit)) ? grossProfit : 0;
 
-    const salesEl = document.getElementById('dash-today-sales');
-    if (salesEl) {
-      salesEl.innerText = api.formatRupiah(todaySales);
-    }
+    const totalTrx = Number(data.total_transactions ?? data.today_transactions ?? data.trx_count ?? 0);
+    const safeTotalTrx = (isFinite(totalTrx) && !isNaN(totalTrx)) ? totalTrx : 0;
 
-    const trxEl = document.getElementById('dash-today-trx');
-    if (trxEl) {
-      trxEl.innerText = todayTrx;
-    }
+    const avgSale = Number(data.avg_sale ?? (safeTotalTrx > 0 ? Math.round(safeNetSales / safeTotalTrx) : 0));
+    const safeAvgSale = (isFinite(avgSale) && !isNaN(avgSale)) ? avgSale : 0;
 
-    const tables = data.tables || {};
-    const totalTables = Number(tables.total_tables) || 0;
-    const occupiedTables = Number(tables.occupied_tables) || 0;
-    const occupancy = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
-    const occEl = document.getElementById('dash-table-occupancy');
-    if (occEl) {
-      occEl.innerText = `${occupancy}%`;
-    }
+    // Render 5 KPI Cards
+    const grossEl = document.getElementById('dash-gross-sales');
+    if (grossEl) grossEl.textContent = api.formatRupiah(safeGrossSales);
 
-    const shiftCashEl = document.getElementById('dash-active-shift-cash');
-    if (shiftCashEl) {
-      shiftCashEl.innerText = (data.active_shift && data.active_shift.expected_cash)
-        ? api.formatRupiah(data.active_shift.expected_cash)
-        : 'Rp 0';
-    }
+    const netEl = document.getElementById('dash-net-sales');
+    if (netEl) netEl.textContent = api.formatRupiah(safeNetSales);
 
-    // Top Selling Items
-    const topContainer = document.getElementById('dash-top-items-list');
-    const topItems = Array.isArray(data.top_selling_items) ? data.top_selling_items : [];
-    if (topContainer) {
-      if (topItems.length === 0) {
-        topContainer.innerHTML = '<div style="color:var(--text-muted);font-size:0.88rem;padding:1rem 0;">Belum ada menu yang terjual hari ini.</div>';
-      } else {
-        topContainer.innerHTML = topItems.map((item, idx) => `
-          <div class="rank-item">
-            <div class="rank-info">
-              <div class="rank-num">${idx + 1}</div>
-              <div>
-                <div style="font-weight:700;font-size:0.92rem;color:var(--text-heading);">${item.name || 'Menu'}</div>
-                <div style="font-size:0.78rem;color:var(--text-muted);">${item.qty_sold || 0} porsi terjual</div>
-              </div>
-            </div>
-            <div style="font-family:var(--font-heading);font-weight:800;color:var(--primary);font-size:1.05rem;">${api.formatRupiah(item.revenue || 0)}</div>
-          </div>
-        `).join('');
-      }
-    }
+    const profitEl = document.getElementById('dash-gross-profit');
+    if (profitEl) profitEl.textContent = api.formatRupiah(safeGrossProfit);
 
-    // Low stock alerts
-    const stockContainer = document.getElementById('dash-low-stock-list');
-    const lowStockAlerts = Array.isArray(data.low_stock_alerts) ? data.low_stock_alerts : [];
-    if (stockContainer) {
-      if (lowStockAlerts.length === 0) {
-        stockContainer.innerHTML = '<div style="color:var(--accent-green);font-weight:600;font-size:0.88rem;padding:1rem 0;">✓ Semua persediaan bahan baku pada kondisi aman.</div>';
-      } else {
-        stockContainer.innerHTML = lowStockAlerts.map(item => `
-          <div class="stock-alert-box">
-            <div>
-              <div style="font-weight:700;color:var(--accent-red);font-size:0.92rem;">${item.name || 'Bahan'}</div>
-              <div style="font-size:0.78rem;color:var(--text-muted);">Batas minimum aman: ${item.min_stock_alert || 0} ${item.unit || ''}</div>
-            </div>
-            <div style="font-weight:800;font-size:1.05rem;color:var(--accent-red);font-family:var(--font-heading);">${item.current_stock || 0} ${item.unit || ''}</div>
-          </div>
-        `).join('');
-      }
+    const trxEl = document.getElementById('dash-total-trx');
+    if (trxEl) trxEl.textContent = safeTotalTrx.toLocaleString('id-ID');
+
+    const avgEl = document.getElementById('dash-avg-sale');
+    if (avgEl) avgEl.textContent = api.formatRupiah(safeAvgSale);
+
+    // Backward compatibility for legacy elements if present in DOM
+    const legacySalesEl = document.getElementById('dash-today-sales');
+    if (legacySalesEl) legacySalesEl.innerText = api.formatRupiah(safeNetSales);
+    const legacyTrxEl = document.getElementById('dash-today-trx');
+    if (legacyTrxEl) legacyTrxEl.innerText = safeTotalTrx;
+
+    // Split Panel 1: KATEGORI BERDASARKAN VOLUME
+    renderDashboardCategoriesVolume(data.categories_by_volume);
+
+    // Split Panel 2: KATEGORI BERDASARKAN PENJUALAN
+    renderDashboardCategoriesSales(data.categories_by_sales);
+
+    // Bottom Panel: ITEM TERATAS BERDASARKAN KATEGORI
+    renderDashboardTopItems(data);
+
+    // Update Outlet indicator
+    const outletEl = document.getElementById('dash-outlet-name');
+    if (outletEl && state.outlet) {
+      outletEl.textContent = `${state.outlet.name || 'Teras Manis'} • Outlet Utama`;
     }
 
   } catch (err) {
     console.error('Dashboard error:', err);
-    const salesEl = document.getElementById('dash-today-sales');
-    if (salesEl) salesEl.innerText = 'Rp 0';
-    const trxEl = document.getElementById('dash-today-trx');
-    if (trxEl) trxEl.innerText = '0';
+    // Reset KPIs to 0
+    ['dash-gross-sales', 'dash-net-sales', 'dash-gross-profit', 'dash-avg-sale'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = 'Rp 0';
+    });
+    const trxEl = document.getElementById('dash-total-trx');
+    if (trxEl) trxEl.textContent = '0';
   }
+}
+
+function selectDashPeriod(period, btn) {
+  state.dashPeriod = period;
+  const buttons = document.querySelectorAll('#dash-period-filters .period-btn');
+  buttons.forEach(b => b.classList.remove('active'));
+  if (btn) {
+    btn.classList.add('active');
+  } else {
+    const targetBtn = document.querySelector(`#dash-period-filters .period-btn[data-period="${period}"]`);
+    if (targetBtn) targetBtn.classList.add('active');
+  }
+  loadDashboard();
+}
+
+async function refreshDashboardData() {
+  await loadDashboard();
+  api.showToast('Data analitik dashboard berhasil dimuat ulang.', 'info');
+}
+
+function filterTopItemsCategory(catVal) {
+  state.dashCategoryFilter = catVal || 'all';
+  if (state.dashCachedData) {
+    renderDashboardTopItems(state.dashCachedData);
+  }
+}
+
+function renderDashboardCategoriesVolume(catVolume) {
+  const container = document.getElementById('dash-cat-volume-body');
+  if (!container) return;
+
+  const items = Array.isArray(catVolume) ? catVolume.filter(c => Number(c.total_volume ?? c.volume ?? 0) > 0) : [];
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="moka-empty-state">
+        <p>Tidak ada data</p>
+      </div>
+    `;
+    return;
+  }
+
+  const palette = ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899', '#64748b'];
+  const html = `
+    <div class="dash-cat-list">
+      ${items.map((cat, idx) => {
+        const color = palette[idx % palette.length];
+        const pct = Math.min(100, Math.max(0, cat.percentage || 0));
+        const vol = Number(cat.total_volume ?? cat.volume ?? 0);
+        return `
+          <div class="dash-cat-item">
+            <div class="dash-cat-info">
+              <span class="dash-cat-name">${cat.category_name || 'Tanpa Kategori'}</span>
+              <span class="dash-cat-val">${vol.toLocaleString('id-ID')} unit (${pct}%)</span>
+            </div>
+            <div class="dash-cat-bar-bg">
+              <div class="dash-cat-bar-fill" style="width:${pct}%; background-color:${color};"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  container.innerHTML = html;
+}
+
+function renderDashboardCategoriesSales(catSales) {
+  const container = document.getElementById('dash-cat-sales-body');
+  if (!container) return;
+
+  const items = Array.isArray(catSales) ? catSales.filter(c => Number(c.total_sales ?? c.sales ?? 0) > 0) : [];
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="moka-empty-state">
+        <p>Tidak ada data</p>
+      </div>
+    `;
+    return;
+  }
+
+  const palette = ['#10b981', '#0284c7', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
+  const html = `
+    <div class="dash-cat-list">
+      ${items.map((cat, idx) => {
+        const color = palette[idx % palette.length];
+        const pct = Math.min(100, Math.max(0, cat.percentage || 0));
+        const sls = Number(cat.total_sales ?? cat.sales ?? 0);
+        return `
+          <div class="dash-cat-item">
+            <div class="dash-cat-info">
+              <span class="dash-cat-name">${cat.category_name || 'Tanpa Kategori'}</span>
+              <span class="dash-cat-val">${api.formatRupiah(sls)} (${pct}%)</span>
+            </div>
+            <div class="dash-cat-bar-bg">
+              <div class="dash-cat-bar-fill" style="width:${pct}%; background-color:${color};"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  container.innerHTML = html;
+}
+
+function renderDashboardTopItems(data) {
+  const container = document.getElementById('dash-top-items-body');
+  const catFilterSelect = document.getElementById('dash-top-items-cat-filter');
+  if (!container) return;
+
+  const rawItems = Array.isArray(data.top_items_by_category) ? data.top_items_by_category : [];
+
+  // Populate category options in dropdown if empty or only "all"
+  if (catFilterSelect && catFilterSelect.options.length <= 1) {
+    const cats = new Set();
+    rawItems.forEach(i => {
+      if (i.category_name) cats.add(i.category_name);
+    });
+    if (Array.isArray(state.categories)) {
+      state.categories.forEach(c => {
+        if (c.name) cats.add(c.name);
+      });
+    }
+    cats.forEach(cName => {
+      const opt = document.createElement('option');
+      opt.value = cName;
+      opt.textContent = cName;
+      catFilterSelect.appendChild(opt);
+    });
+  }
+
+  // Filter items
+  const activeCat = state.dashCategoryFilter || 'all';
+  const filtered = activeCat === 'all'
+    ? rawItems
+    : rawItems.filter(i => (i.category_name || '').toLowerCase() === activeCat.toLowerCase() || String(i.category_id) === String(activeCat));
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="moka-empty-state">
+        <p>Tidak ada data</p>
+      </div>
+    `;
+    return;
+  }
+
+  const html = `
+    <div class="dash-table-wrap">
+      <table class="dash-ranking-table">
+        <thead>
+          <tr>
+            <th style="width:48px; text-align:center;">#</th>
+            <th>NAMA ITEM</th>
+            <th>KATEGORI</th>
+            <th style="text-align:right;">HARGA</th>
+            <th style="text-align:center;">VOLUME TERJUAL</th>
+            <th style="text-align:right;">TOTAL PENJUALAN</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map((item, idx) => {
+            const rankClass = idx === 0 ? 'top-1' : (idx === 1 ? 'top-2' : (idx === 2 ? 'top-3' : ''));
+            const price = Number(item.item_price ?? item.price ?? 0);
+            const qty = Number(item.qty_sold ?? item.quantity_sold ?? 0);
+            const totalRev = Number(item.total_revenue ?? item.total_sales ?? 0);
+            return `
+              <tr>
+                <td style="text-align:center;">
+                  <span class="dash-rank-badge ${rankClass}">${idx + 1}</span>
+                </td>
+                <td style="font-weight:700; color:var(--text-heading);">${item.item_name || item.name || '-'}</td>
+                <td><span style="color:var(--text-muted); font-size:0.8rem;">${item.category_name || 'Umum'}</span></td>
+                <td style="text-align:right; font-weight:600;">${api.formatRupiah(price)}</td>
+                <td style="text-align:center; font-weight:700; color:#0284c7;">${qty.toLocaleString('id-ID')} unit</td>
+                <td style="text-align:right; font-weight:800; color:var(--text-heading);">${api.formatRupiah(totalRev)}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  container.innerHTML = html;
+}
+
+// ==========================================================================
+// Moka Backoffice Modal & Navigation Actions
+// ==========================================================================
+function toggleSidebarUserMenu(e) {
+  if (e) e.stopPropagation();
+  const dropdown = document.getElementById('profile-dropdown-menu');
+  if (dropdown) {
+    dropdown.classList.toggle('show');
+  }
+}
+
+function openSubscribeModal() {
+  const modal = document.getElementById('subscribe-modal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeSubscribeModal() {
+  const modal = document.getElementById('subscribe-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function openCustomersModal() {
+  const modal = document.getElementById('customers-modal');
+  if (modal) {
+    modal.classList.add('active');
+    populateCustomerListModal();
+  }
+}
+
+function closeCustomersModal() {
+  const modal = document.getElementById('customers-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function filterCustomerList(query) {
+  const term = (query || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#customers-table-body tr');
+  rows.forEach(r => {
+    const text = r.textContent.toLowerCase();
+    r.style.display = text.includes(term) ? '' : 'none';
+  });
+}
+
+function populateCustomerListModal() {
+  const tbody = document.getElementById('customers-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = `
+    <tr>
+      <td style="padding:0.65rem 0.85rem;font-weight:700;">Pelanggan Umum (Walk-in)</td>
+      <td style="padding:0.65rem 0.85rem;color:var(--text-muted);">-</td>
+      <td style="padding:0.65rem 0.85rem;text-align:center;">0</td>
+      <td style="padding:0.65rem 0.85rem;text-align:right;font-weight:700;color:var(--primary);">Rp 0</td>
+    </tr>
+    <tr>
+      <td style="padding:0.65rem 0.85rem;font-weight:700;">Budi Santoso (Member Silver)</td>
+      <td style="padding:0.65rem 0.85rem;color:var(--text-muted);">0812-3456-7890</td>
+      <td style="padding:0.65rem 0.85rem;text-align:center;font-weight:700;color:var(--accent-amber);">120</td>
+      <td style="padding:0.65rem 0.85rem;text-align:right;font-weight:700;color:var(--text-heading);">${api.formatRupiah(385000)}</td>
+    </tr>
+    <tr>
+      <td style="padding:0.65rem 0.85rem;font-weight:700;">Siti Rahma (Member Gold)</td>
+      <td style="padding:0.65rem 0.85rem;color:var(--text-muted);">0813-9876-5432</td>
+      <td style="padding:0.65rem 0.85rem;text-align:center;font-weight:700;color:var(--accent-amber);">450</td>
+      <td style="padding:0.65rem 0.85rem;text-align:right;font-weight:700;color:var(--text-heading);">${api.formatRupiah(1240000)}</td>
+    </tr>
+  `;
+}
+
+function openPartnerSolutionsModal() {
+  const modal = document.getElementById('partner-solutions-modal');
+  if (modal) modal.classList.add('active');
+}
+
+function closePartnerSolutionsModal() {
+  const modal = document.getElementById('partner-solutions-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function openTutorialsModal() {
+  const modal = document.getElementById('tutorials-modal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeTutorialsModal() {
+  const modal = document.getElementById('tutorials-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function openInventoryTab(tab) {
+  navigateToView('view-inventory');
+  setTimeout(() => {
+    if (tab === 'recipe') {
+      const el = document.getElementById('recipe-details-container') || document.getElementById('recipe-item-select');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      const el = document.getElementById('inventory-table-body');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 100);
 }
 
 // ==========================================================================
@@ -1797,10 +2117,11 @@ async function loadFloorMap() {
       let badgeLabel = '🟢 Kosong';
       let icon = '🪑';
 
-      if (t.status === 'occupied') {
+      const tableStatus = t.status || 'available';
+      if (tableStatus === 'occupied') {
         badgeClass = 'occupied';
         badgeLabel = '🔴 Terisi';
-      } else if (t.status === 'reserved') {
+      } else if (tableStatus === 'reserved') {
         badgeClass = 'reserved';
         badgeLabel = '🟡 Reservasi';
       }
@@ -1809,16 +2130,20 @@ async function loadFloorMap() {
         icon = '🛋️';
       }
 
+      const tableNumber = (t.table_number !== null && t.table_number !== undefined && t.table_number !== '' && t.table_number !== 'undefined') ? t.table_number : 0;
+      const groupName = t.group_name || 'Indoor AC';
+      const capacity = (t.capacity !== null && t.capacity !== undefined && !isNaN(Number(t.capacity))) ? Number(t.capacity) : 0;
+
       return `
-        <div class="table-node ${t.status}" onclick="openTableStatusModal(${t.id})" title="Klik untuk ubah status meja atau buka di kasir">
+        <div class="table-node ${tableStatus}" onclick="openTableStatusModal(${t.id})" title="Klik untuk ubah status meja atau buka di kasir">
           <span class="table-node-badge ${badgeClass}">${badgeLabel}</span>
           <div class="table-node-icon">${icon}</div>
           <div>
-            <div class="table-node-name">Meja ${t.table_number}</div>
-            <div class="table-node-area">${t.group_name || 'Indoor AC'}</div>
+            <div class="table-node-name">Meja ${tableNumber}</div>
+            <div class="table-node-area">${groupName}</div>
           </div>
           <div class="table-node-footer">
-            <span>👥 ${t.capacity} Kursi</span>
+            <span>👥 ${capacity} Kursi</span>
             <span style="color:var(--primary);font-weight:700;">Atur ➔</span>
           </div>
         </div>
@@ -1848,8 +2173,11 @@ function openTableStatusModal(tableId) {
   const modalSubtitle = document.getElementById('table-modal-subtitle');
   const inputId = document.getElementById('table-modal-id');
 
-  if (modalName) modalName.innerText = `Meja ${table.table_number}`;
-  if (modalSubtitle) modalSubtitle.innerHTML = `Area: <strong>${table.group_name || 'Indoor AC'}</strong> &bull; Kapasitas: <strong>${table.capacity} Orang</strong>`;
+  const tableNumber = (table.table_number !== null && table.table_number !== undefined && table.table_number !== '' && table.table_number !== 'undefined') ? table.table_number : 0;
+  const capacity = (table.capacity !== null && table.capacity !== undefined && !isNaN(Number(table.capacity))) ? Number(table.capacity) : 0;
+
+  if (modalName) modalName.innerText = `Meja ${tableNumber}`;
+  if (modalSubtitle) modalSubtitle.innerHTML = `Area: <strong>${table.group_name || 'Indoor AC'}</strong> &bull; Kapasitas: <strong>${capacity} Orang</strong>`;
   if (inputId) inputId.value = table.id;
 
   selectStatusOptionChoice(table.status || 'available');
@@ -1929,8 +2257,8 @@ async function loadInventory() {
 
         return `
           <tr>
-            <td style="font-weight:700;color:var(--text-heading);">${ing.name || 'Bahan Baku'}</td>
-            <td style="color:var(--text-muted);">${ing.category_name || '-'}</td>
+            <td style="font-weight:700;color:var(--text-heading);">${ing.name || '0'}</td>
+            <td style="color:var(--text-muted);">${ing.category_name || '0'}</td>
             <td style="font-weight:800; font-family:var(--font-heading); color: ${isLow ? 'var(--accent-red)' : 'var(--accent-green)'};">
               ${currentStock.toLocaleString('id-ID')} ${unit}
             </td>
@@ -2047,25 +2375,38 @@ async function loadShiftsAndHistory() {
     // Load past transactions
     const trxs = await api.getTransactions(state.activeOutletId, 15);
     const tbody = document.getElementById('history-table-body');
-    tbody.innerHTML = trxs.map(t => `
-      <tr>
-        <td style="font-weight:800;font-family:var(--font-heading);color:var(--text-heading);">${t.transaction_number}</td>
-        <td style="color:var(--text-muted);">${new Date(t.created_at).toLocaleTimeString('id-ID')}</td>
-        <td style="font-weight:600;">${t.table_number || 'Takeaway'}</td>
-        <td style="font-weight:800;color:var(--primary);font-family:var(--font-heading);">${api.formatRupiah(t.total_amount)}</td>
-        <td><span style="font-weight:600;">${t.payment_method}</span></td>
-        <td>
-          <span style="display:inline-block;padding:3px 9px;border-radius:var(--radius-full);font-size:0.76rem;font-weight:700;background:${t.payment_status === 'paid' ? 'var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);' : 'var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);'}">
-            ${t.payment_status === 'paid' ? 'Lunas (Paid)' : t.payment_status}
-          </span>
-        </td>
-        <td>
-          ${t.payment_status === 'paid' ? `
-            <button onclick="voidTrx(${t.id})" style="padding:4px 10px;background:var(--accent-red-bg);border:1px solid var(--accent-red-border);border-radius:var(--radius-sm);color:var(--accent-red);font-size:0.78rem;font-weight:700;cursor:pointer;">Void</button>
-          ` : '-'}
-        </td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = (trxs || []).map(t => {
+      const trxNum = t.transaction_number || 0;
+      const createdTime = t.created_at ? new Date(t.created_at).toLocaleTimeString('id-ID') : 0;
+      const tableNum = t.table_number || 'Takeaway';
+      const totalAmount = (t.total_amount !== null && t.total_amount !== undefined && !isNaN(Number(t.total_amount))) ? Number(t.total_amount) : 0;
+      const paymentMethod = t.payment_method || 0;
+      const rawStatus = t.payment_status;
+      const isPaid = rawStatus === 'paid';
+      const statusLabel = (rawStatus === null || rawStatus === undefined || rawStatus === '' || rawStatus === 'undefined' || rawStatus === 'NaN')
+        ? '0'
+        : (isPaid ? 'Lunas (Paid)' : rawStatus);
+
+      return `
+        <tr>
+          <td style="font-weight:800;font-family:var(--font-heading);color:var(--text-heading);">${trxNum}</td>
+          <td style="color:var(--text-muted);">${createdTime}</td>
+          <td style="font-weight:600;">${tableNum}</td>
+          <td style="font-weight:800;color:var(--primary);font-family:var(--font-heading);">${api.formatRupiah(totalAmount)}</td>
+          <td><span style="font-weight:600;">${paymentMethod}</span></td>
+          <td>
+            <span style="display:inline-block;padding:3px 9px;border-radius:var(--radius-full);font-size:0.76rem;font-weight:700;background:${isPaid ? 'var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);' : 'var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);'}">
+              ${statusLabel}
+            </span>
+          </td>
+          <td>
+            ${isPaid ? `
+              <button onclick="voidTrx(${t.id})" style="padding:4px 10px;background:var(--accent-red-bg);border:1px solid var(--accent-red-border);border-radius:var(--radius-sm);color:var(--accent-red);font-size:0.78rem;font-weight:700;cursor:pointer;">Void</button>
+            ` : '-'}
+          </td>
+        </tr>
+      `;
+    }).join('');
 
   } catch (err) {
     console.error('Shifts error:', err);
@@ -2181,6 +2522,10 @@ function setupEventListeners() {
     }
 
     if (e.key === 'Escape') {
+      closeSubscribeModal();
+      closeCustomersModal();
+      closePartnerSolutionsModal();
+      closeTutorialsModal();
       closeModifierModal();
       closePaymentModal();
       closeReceiptModal();
@@ -2189,6 +2534,17 @@ function setupEventListeners() {
       closeMasterCategoryModal();
       closeMasterItemModal();
       closeMasterPriceModal();
+    }
+  });
+
+  // Close profile dropdown on outside click
+  document.addEventListener('click', (e) => {
+    const profileDropdown = document.getElementById('profile-dropdown-menu');
+    const profileBox = document.getElementById('sidebar-profile-box');
+    if (profileDropdown && profileDropdown.classList.contains('show')) {
+      if (profileBox && !profileBox.contains(e.target)) {
+        profileDropdown.classList.remove('show');
+      }
     }
   });
 }
@@ -2313,8 +2669,8 @@ async function loadMasterCategories() {
               return `
                 <tr id="cat-row-${c.id}">
                   <td style="font-weight:700;color:var(--text-muted);">${c.id}</td>
-                  <td style="font-weight:800;color:var(--text-heading);">${c.name}</td>
-                  <td style="color:var(--text-muted);font-size:0.84rem;">${c.description || '-'}</td>
+                  <td style="font-weight:800;color:var(--text-heading);">${c.name || '0'}</td>
+                  <td style="color:var(--text-muted);font-size:0.84rem;">${c.description || '0'}</td>
                   <td style="text-align:center;"><span style="font-weight:700;padding:2px 8px;background:var(--bg-surface);border-radius:var(--radius-full);border:1px solid var(--border-subtle);">${count} item</span></td>
                   <td style="text-align:center;">
                     <span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">Aktif</span>
@@ -2447,31 +2803,36 @@ async function loadMasterItems() {
             </tr>
           </thead>
           <tbody id="master-item-tbody">
-            ${items.map(i => {
-              const margin = i.price > 0 ? (((i.price - (i.cost_price || 0)) / i.price) * 100).toFixed(0) : 0;
-              const isActive = i.is_active !== 0 && i.is_active !== false;
-              const statusBadge = isActive
-                ? `<span style="display:inline-block;padding:2px 7px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">Aktif</span>`
-                : `<span style="display:inline-block;padding:2px 7px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">Nonaktif</span>`;
+            ${(items || []).map(i => {
+              const price = (i.price !== null && i.price !== undefined && !isNaN(Number(i.price))) ? Number(i.price) : 0;
+              const costPrice = (i.cost_price !== null && i.cost_price !== undefined && !isNaN(Number(i.cost_price))) ? Number(i.cost_price) : 0;
+              const marginCalc = price > 0 ? (((price - costPrice) / price) * 100).toFixed(0) : 0;
+              const margin = (!isFinite(marginCalc) || isNaN(marginCalc)) ? 0 : marginCalc;
+              const isActive = i.is_active !== 0 && i.is_active !== false && i.is_active !== null && i.is_active !== undefined;
+              const statusBadge = (i.is_active === null || i.is_active === undefined || i.is_active === '' || i.is_active === 'undefined' || i.is_active === 'NaN')
+                ? `<span style="display:inline-block;padding:2px 7px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:var(--bg-surface);color:var(--text-muted);border:1px solid var(--border-medium);">0</span>`
+                : (isActive
+                    ? `<span style="display:inline-block;padding:2px 7px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">Aktif</span>`
+                    : `<span style="display:inline-block;padding:2px 7px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">Nonaktif</span>`);
               return `
-                <tr id="item-row-${i.id}" data-cat="${i.category_id}" style="${isActive ? '' : 'opacity:0.75;'}">
+                <tr id="item-row-${i.id}" data-cat="${i.category_id || 0}" style="${isActive ? '' : 'opacity:0.75;'}">
                   <td>
-                    <img src="${i.image_url || '/static/img/coffee.jpg'}" alt="${i.name}" style="width:38px;height:38px;border-radius:var(--radius-sm);object-fit:cover;border:1px solid var(--border-medium);" onerror="this.src='/static/img/coffee.jpg'" />
+                    <img src="${i.image_url || '/static/img/coffee.jpg'}" alt="${i.name || '0'}" style="width:38px;height:38px;border-radius:var(--radius-sm);object-fit:cover;border:1px solid var(--border-medium);" onerror="this.src='/static/img/coffee.jpg'" />
                   </td>
                   <td>
-                    <div style="font-weight:800;color:var(--text-heading);">${i.name}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);">${i.description || '-'}</div>
+                    <div style="font-weight:800;color:var(--text-heading);">${i.name || '0'}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">${i.description || '0'}</div>
                   </td>
-                  <td><span style="font-size:0.8rem;padding:2px 6px;border-radius:var(--radius-full);background:var(--bg-surface);border:1px solid var(--border-subtle);">${i.category_name || '-'}</span></td>
-                  <td style="font-family:monospace;font-size:0.82rem;color:var(--text-muted);">${i.sku || '-'}</td>
-                  <td style="text-align:right;font-weight:800;color:var(--primary);font-family:var(--font-heading);">${api.formatRupiah(i.price)}</td>
-                  <td style="text-align:right;color:var(--text-muted);font-family:var(--font-heading);">${api.formatRupiah(i.cost_price || 0)}</td>
+                  <td><span style="font-size:0.8rem;padding:2px 6px;border-radius:var(--radius-full);background:var(--bg-surface);border:1px solid var(--border-subtle);">${i.category_name || '0'}</span></td>
+                  <td style="font-family:monospace;font-size:0.82rem;color:var(--text-muted);">${i.sku || '0'}</td>
+                  <td style="text-align:right;font-weight:800;color:var(--primary);font-family:var(--font-heading);">${api.formatRupiah(price)}</td>
+                  <td style="text-align:right;color:var(--text-muted);font-family:var(--font-heading);">${api.formatRupiah(costPrice)}</td>
                   <td style="text-align:center;"><span class="margin-badge">${margin}%</span></td>
                   <td style="text-align:center;">${statusBadge}</td>
                   <td style="text-align:right;white-space:nowrap;">
                     <button class="btn-table-action" onclick="openMasterPriceModal(${i.id})" title="Ubah Harga">💰 Harga</button>
                     <button class="btn-table-action" onclick="openEditItemModal(${i.id})" title="Edit Lengkap">✏️</button>
-                    <button class="btn-table-action danger" onclick="deleteItemAction(${i.id}, '${i.name.replace(/'/g, "\\'")}')" title="Hapus Menu">🗑️</button>
+                    <button class="btn-table-action danger" onclick="deleteItemAction(${i.id}, '${(i.name || '0').replace(/'/g, "\\'")}')" title="Hapus Menu">🗑️</button>
                   </td>
                 </tr>
               `;
@@ -2810,22 +3171,25 @@ async function loadMasterPrices() {
             </tr>
           </thead>
           <tbody id="master-price-tbody">
-            ${items.map(i => {
-              const margin = i.price > 0 ? (((i.price - (i.cost_price || 0)) / i.price) * 100).toFixed(0) : 0;
+            ${(items || []).map(i => {
+              const price = (i.price !== null && i.price !== undefined && !isNaN(Number(i.price))) ? Number(i.price) : 0;
+              const costPrice = (i.cost_price !== null && i.cost_price !== undefined && !isNaN(Number(i.cost_price))) ? Number(i.cost_price) : 0;
+              const marginCalc = price > 0 ? (((price - costPrice) / price) * 100).toFixed(0) : 0;
+              const margin = (!isFinite(marginCalc) || isNaN(marginCalc)) ? 0 : marginCalc;
               return `
                 <tr id="price-row-${i.id}">
                   <td>
-                    <div style="font-weight:800;color:var(--text-heading);">${i.name}</div>
-                    <div style="font-size:0.75rem;color:var(--text-muted);">${i.sku || 'No SKU'}</div>
+                    <div style="font-weight:800;color:var(--text-heading);">${i.name || '0'}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">${i.sku || '0'}</div>
                   </td>
-                  <td><span style="font-size:0.8rem;padding:2px 6px;border-radius:var(--radius-full);background:var(--bg-surface);border:1px solid var(--border-subtle);">${i.category_name || '-'}</span></td>
-                  <td style="text-align:right;font-family:var(--font-heading);color:var(--text-muted);">${api.formatRupiah(i.cost_price || 0)}</td>
+                  <td><span style="font-size:0.8rem;padding:2px 6px;border-radius:var(--radius-full);background:var(--bg-surface);border:1px solid var(--border-subtle);">${i.category_name || '0'}</span></td>
+                  <td style="text-align:right;font-family:var(--font-heading);color:var(--text-muted);">${api.formatRupiah(costPrice)}</td>
                   <td style="text-align:right;">
-                    <input type="number" id="inline-price-${i.id}" value="${i.price}" class="quick-price-input" onchange="handleInlinePriceChange(${i.id})" />
+                    <input type="number" id="inline-price-${i.id}" value="${price}" class="quick-price-input" onchange="handleInlinePriceChange(${i.id})" />
                   </td>
                   <td style="text-align:center;" id="margin-val-${i.id}"><span class="margin-badge">${margin}%</span></td>
                   <td style="text-align:right;">
-                    <button class="btn-table-action" onclick="saveInlinePrice(${i.id}, ${i.cost_price || 0})">💾 Simpan</button>
+                    <button class="btn-table-action" onclick="saveInlinePrice(${i.id}, ${costPrice})">💾 Simpan</button>
                     <button class="btn-table-action" onclick="openMasterPriceModal(${i.id})" style="margin-left:4px;">⚙️ Detail</button>
                   </td>
                 </tr>
@@ -2858,13 +3222,15 @@ async function saveInlinePrice(itemId, costPrice) {
     return;
   }
 
+  const cost = (costPrice !== null && costPrice !== undefined && !isNaN(Number(costPrice))) ? Number(costPrice) : 0;
   try {
-    await api.updateItemPrice(itemId, newPrice, costPrice);
+    await api.updateItemPrice(itemId, newPrice, cost);
     api.showToast(`Harga berhasil diupdate ke ${api.formatRupiah(newPrice)}`, 'success');
     // Update margin badge UI
     const marginEl = document.getElementById(`margin-val-${itemId}`);
     if (marginEl) {
-      const margin = newPrice > 0 ? (((newPrice - costPrice) / newPrice) * 100).toFixed(0) : 0;
+      const marginCalc = newPrice > 0 ? (((newPrice - cost) / newPrice) * 100).toFixed(0) : 0;
+      const margin = (!isFinite(marginCalc) || isNaN(marginCalc)) ? 0 : marginCalc;
       marginEl.innerHTML = `<span class="margin-badge">${margin}%</span>`;
     }
     await loadInitialData();
@@ -2890,7 +3256,7 @@ function openMasterPriceModal(itemId) {
 
   document.getElementById('price-edit-item-id').value = item.id;
   document.getElementById('price-edit-item-name').innerText = item.name;
-  document.getElementById('price-edit-item-category').innerText = `Kategori: ${item.category_name || '-'} • SKU: ${item.sku || '-'}`;
+  document.getElementById('price-edit-item-category').innerText = `Kategori: ${item.category_name || '0'} • SKU: ${item.sku || '0'}`;
   document.getElementById('price-edit-selling').value = item.price;
   document.getElementById('price-edit-cost').value = item.cost_price || 0;
   document.getElementById('master-price-modal').classList.add('active');
@@ -2983,45 +3349,50 @@ async function loadMasterModifiers(filterType = null) {
             <div style="font-size:2.2rem;margin-bottom:0.5rem;">${currentTab === 'gula' ? '🍯' : (currentTab === 'toping' ? '🍨' : '📏')}</div>
             <p>${emptyHelp} Klik <strong>${btnLabel}</strong> untuk membuat baru.</p>
           </div>
-        ` : filteredMods.map(mod => {
+        ` : (filteredMods || []).map(mod => {
           const isSingle = mod.max_selection === 1;
-          const isActive = mod.is_active !== 0 && mod.is_active !== false;
-          const statusBadge = isActive
-            ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">🟢 Aktif</span>`
-            : `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">🔴 Nonaktif</span>`;
+          const isActive = mod.is_active !== 0 && mod.is_active !== false && mod.is_active !== null && mod.is_active !== undefined;
+          const statusBadge = (mod.is_active === null || mod.is_active === undefined || mod.is_active === '' || mod.is_active === 'undefined' || mod.is_active === 'NaN')
+            ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--bg-surface);color:var(--text-muted);border:1px solid var(--border-medium);">0</span>`
+            : (isActive
+                ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">🟢 Aktif</span>`
+                : `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">🔴 Nonaktif</span>`);
+          const optCount = (mod.options && mod.options.length) ? mod.options.length : 0;
           
           return `
             <div class="master-modifier-card" id="mod-card-${mod.id}" style="background:var(--bg-surface);border:1px solid var(--border-medium);border-radius:var(--radius-lg);padding:1.25rem;${isActive ? '' : 'opacity:0.75;'}">
               <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.6rem;border-bottom:1px solid var(--border-subtle);padding-bottom:0.75rem;margin-bottom:1rem;">
                 <div>
                   <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                    <h4 style="font-size:1.1rem;font-weight:800;color:var(--primary);">${mod.name}</h4>
+                    <h4 style="font-size:1.1rem;font-weight:800;color:var(--primary);">${mod.name || '0'}</h4>
                     <span style="font-size:0.75rem;padding:2px 8px;border-radius:var(--radius-full);background:var(--primary-subtle);color:var(--primary);font-weight:700;border:1px solid var(--border-subtle);">
                       ${isSingle ? '🔘 Wajib Pilih 1 (Radio)' : '☑️ Pilihan Jamak (Checkbox)'}
                     </span>
                     ${statusBadge}
                   </div>
                   <p style="font-size:0.8rem;color:var(--text-muted);margin-top:2px;">
-                    ${(mod.options && mod.options.length) || 0} Opsi Pilihan Tersedia
+                    ${optCount} Opsi Pilihan Tersedia
                   </p>
                 </div>
                 <div style="display:flex;gap:0.4rem;align-items:center;">
                   <button class="btn-table-action" onclick="openEditModifierModal(${mod.id})" title="Edit Grup Varian">✏️ Edit</button>
-                  <button class="btn-table-action danger" onclick="deleteModifierAction(${mod.id}, '${mod.name.replace(/'/g, "\\'")}')" title="Hapus Varian">🗑️ Hapus</button>
+                  <button class="btn-table-action danger" onclick="deleteModifierAction(${mod.id}, '${(mod.name || '0').replace(/'/g, "\\'")}')" title="Hapus Varian">🗑️ Hapus</button>
                 </div>
               </div>
 
               <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:0.75rem;">
                 ${(!mod.options || mod.options.length === 0) ? `
                   <div style="font-size:0.82rem;color:var(--text-muted);font-style:italic;">Belum ada opsi pilihan di grup ini.</div>
-                ` : mod.options.map(opt => `
+                ` : mod.options.map(opt => {
+                  const optPrice = (opt.additional_price !== null && opt.additional_price !== undefined && !isNaN(Number(opt.additional_price))) ? Number(opt.additional_price) : 0;
+                  return `
                   <div style="padding:0.75rem 1rem;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-md);display:flex;justify-content:space-between;align-items:center;">
-                    <span style="font-weight:700;font-size:0.88rem;color:var(--text-heading);">${opt.name}</span>
-                    <span style="font-weight:800;font-family:var(--font-heading);color:${opt.additional_price > 0 ? 'var(--primary)' : 'var(--text-muted)'};font-size:0.85rem;">
-                      ${opt.additional_price > 0 ? `+${api.formatRupiah(opt.additional_price)}` : 'Gratis'}
+                    <span style="font-weight:700;font-size:0.88rem;color:var(--text-heading);">${opt.name || '0'}</span>
+                    <span style="font-weight:800;font-family:var(--font-heading);color:${optPrice > 0 ? 'var(--primary)' : 'var(--text-muted)'};font-size:0.85rem;">
+                      ${optPrice > 0 ? `+${api.formatRupiah(optPrice)}` : 'Gratis'}
                     </span>
                   </div>
-                `).join('')}
+                `;}).join('')}
               </div>
             </div>
           `;
@@ -3453,11 +3824,14 @@ async function loadMasterEmployees() {
           </thead>
           <tbody id="master-emp-tbody">
             ${emps.map(e => {
-              const isActive = e.is_active !== 0 && e.is_active !== false;
+              const isActive = e.is_active !== 0 && e.is_active !== false && e.is_active !== null && e.is_active !== undefined;
               const roleName = e.role_name || 'Kasir / Barista';
-              const statusBadge = isActive
-                ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">🟢 Aktif</span>`
-                : `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">🔴 Nonaktif</span>`;
+              const statusBadge = (e.is_active === null || e.is_active === undefined || e.is_active === '' || e.is_active === 'undefined' || e.is_active === 'NaN')
+                ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-medium);">0</span>`
+                : (isActive
+                    ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">🟢 Aktif</span>`
+                    : `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">🔴 Nonaktif</span>`);
+              const phone = (e.phone !== null && e.phone !== undefined && e.phone !== '' && e.phone !== 'undefined') ? e.phone : '0';
               return `
                 <tr id="emp-row-${e.id}" data-role="${roleName}" style="${isActive ? '' : 'opacity:0.75;'}">
                   <td style="font-weight:700;color:var(--text-muted);">${e.id}</td>
@@ -3472,7 +3846,7 @@ async function loadMasterEmployees() {
                       ${roleName}
                     </span>
                   </td>
-                  <td style="color:var(--text-muted);font-size:0.85rem;">${e.phone || '-'}</td>
+                  <td style="color:var(--text-muted);font-size:0.85rem;">${phone}</td>
                   <td style="text-align:center;">
                     <span class="pin-masked-tag" onclick="toggleShowPin(this, '${e.pin || '••••'}')" title="Klik untuk lihat / sembunyikan PIN" style="font-family:monospace;font-weight:800;letter-spacing:2px;cursor:pointer;padding:3px 8px;border-radius:var(--radius-sm);background:var(--bg-surface);border:1px solid var(--border-medium);user-select:none;">••••</span>
                   </td>
@@ -3749,11 +4123,14 @@ async function loadSettingsEmployees() {
           </thead>
           <tbody id="settings-emp-tbody">
             ${emps.map(e => {
-              const isActive = e.is_active !== 0 && e.is_active !== false;
+              const isActive = e.is_active !== 0 && e.is_active !== false && e.is_active !== null && e.is_active !== undefined;
               const roleName = e.role_name || 'Kasir / Barista';
-              const statusBadge = isActive
-                ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">🟢 Aktif</span>`
-                : `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">🔴 Nonaktif</span>`;
+              const statusBadge = (e.is_active === null || e.is_active === undefined || e.is_active === '' || e.is_active === 'undefined' || e.is_active === 'NaN')
+                ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--bg-input);color:var(--text-muted);border:1px solid var(--border-medium);">0</span>`
+                : (isActive
+                    ? `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);">🟢 Aktif</span>`
+                    : `<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);">🔴 Nonaktif</span>`);
+              const phone = (e.phone !== null && e.phone !== undefined && e.phone !== '' && e.phone !== 'undefined') ? e.phone : '0';
               return `
                 <tr id="semp-row-${e.id}" data-role="${roleName}" style="${isActive ? '' : 'opacity:0.75;'}">
                   <td style="font-weight:700;color:var(--text-muted);">${e.id}</td>
@@ -3768,7 +4145,7 @@ async function loadSettingsEmployees() {
                       ${roleName}
                     </span>
                   </td>
-                  <td style="color:var(--text-muted);font-size:0.85rem;">${e.phone || '-'}</td>
+                  <td style="color:var(--text-muted);font-size:0.85rem;">${phone}</td>
                   <td style="text-align:center;">
                     <span class="pin-masked-tag" onclick="toggleShowPin(this, '${e.pin || '••••'}')" title="Klik untuk lihat / sembunyikan PIN" style="font-family:monospace;font-weight:800;letter-spacing:2px;cursor:pointer;padding:3px 8px;border-radius:var(--radius-sm);background:var(--bg-surface);border:1px solid var(--border-medium);user-select:none;">••••</span>
                   </td>
@@ -4788,7 +5165,7 @@ function switchAttendanceTab(tabName, updateHash = true) {
 }
 
 function formatTimeOnly(timeStr) {
-  if (!timeStr) return '-';
+  if (!timeStr) return '0';
   try {
     const parts = timeStr.trim().split(' ');
     if (parts.length > 1) {
@@ -4796,14 +5173,15 @@ function formatTimeOnly(timeStr) {
     }
     return timeStr.slice(11, 16) || timeStr;
   } catch (e) {
-    return timeStr;
+    return timeStr || '0';
   }
 }
 
 function formatWorkMinutes(minutes) {
-  if (minutes === null || minutes === undefined) return '-';
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
+  if (minutes === null || minutes === undefined || isNaN(Number(minutes))) return '0 mnt';
+  const minsVal = Math.max(0, parseInt(minutes, 10) || 0);
+  const hrs = Math.floor(minsVal / 60);
+  const mins = minsVal % 60;
   if (hrs > 0) {
     return `${hrs} jam ${mins} mnt`;
   }
@@ -4811,14 +5189,15 @@ function formatWorkMinutes(minutes) {
 }
 
 function calculateLiveElapsed(clockInStr) {
-  if (!clockInStr) return '-';
+  if (!clockInStr) return '0 mnt';
   try {
     const cin = new Date(clockInStr.replace(' ', 'T'));
+    if (isNaN(cin.getTime())) return '0 mnt';
     const now = new Date();
-    const diffMins = Math.max(1, Math.floor((now - cin) / 60000));
+    const diffMins = Math.max(0, Math.floor((now - cin) / 60000));
     return formatWorkMinutes(diffMins);
   } catch (e) {
-    return '-';
+    return '0 mnt';
   }
 }
 
@@ -4955,16 +5334,16 @@ async function loadAttendance() {
               <div class="att-card-times">
                 <div class="att-time-row">
                   <span class="label">Jam Masuk:</span>
-                  <span class="val">-</span>
+                  <span class="val">0</span>
                 </div>
                 <div class="att-time-row">
                   <span class="label">Durasi:</span>
-                  <span class="val">-</span>
+                  <span class="val">0</span>
                 </div>
               </div>
             `;
             actionBtnHtml = `
-              <button class="att-btn-clockin" onclick="openClockInModal(${emp.employee_id}, '${emp.name.replace(/'/g, "\\'")}', '${emp.role_name || ''}')">
+              <button class="att-btn-clockin" onclick="openClockInModal(${emp.employee_id}, '${emp.name.replace(/'/g, "\\'")}', '${emp.role_name || '0'}')">
                 <span>⚡</span> Clock In (Masuk)
               </button>
             `;
@@ -5087,13 +5466,13 @@ function renderDailyAttendanceTable(records) {
     return `
       <tr>
         <td style="text-align:center;font-weight:600;">${idx + 1}</td>
-        <td style="font-weight:700;color:var(--text-heading);">${r.employee_name}</td>
-        <td><span style="font-size:0.8rem;padding:2px 8px;background:var(--bg-input);border-radius:10px;">${r.role_name || '-'}</span></td>
+        <td style="font-weight:700;color:var(--text-heading);">${r.employee_name || '0'}</td>
+        <td><span style="font-size:0.8rem;padding:2px 8px;background:var(--bg-input);border-radius:10px;">${r.role_name || '0'}</span></td>
         <td style="font-family:var(--font-heading);font-weight:700;color:var(--accent-green);">${formatTimeOnly(r.clock_in)}</td>
         <td style="font-family:var(--font-heading);font-weight:700;color:var(--text-muted);">${formatTimeOnly(r.clock_out)}</td>
         <td style="font-weight:700;">${durasi}</td>
         <td>${statusBadge}</td>
-        <td style="font-size:0.82rem;color:var(--text-muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;">${r.notes || '-'}</td>
+        <td style="font-size:0.82rem;color:var(--text-muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;">${r.notes || '0'}</td>
         <td>${actionHtml}</td>
       </tr>
     `;
@@ -5146,16 +5525,21 @@ async function loadAttendanceMonthlySummary() {
     }
 
     tbody.innerHTML = res.items.map((it, idx) => {
-      const avgHours = it.total_days_present > 0 ? (it.total_work_hours / it.total_days_present).toFixed(1) : 0;
+      const totalDays = (!isNaN(Number(it.total_days_present)) && it.total_days_present !== null) ? Number(it.total_days_present) : 0;
+      const totalHours = (!isNaN(Number(it.total_work_hours)) && it.total_work_hours !== null) ? Number(it.total_work_hours) : 0;
+      const totalMins = (!isNaN(Number(it.total_work_minutes)) && it.total_work_minutes !== null) ? Number(it.total_work_minutes) : 0;
+      const lateCount = (!isNaN(Number(it.late_count)) && it.late_count !== null) ? Number(it.late_count) : 0;
+      const rawAvg = totalDays > 0 ? (totalHours / totalDays) : 0;
+      const avgHours = (!isFinite(rawAvg) || isNaN(rawAvg)) ? 0 : rawAvg.toFixed(1);
       return `
         <tr>
           <td style="text-align:center;font-weight:600;">${idx + 1}</td>
-          <td style="font-weight:700;color:var(--text-heading);">${it.employee_name}</td>
-          <td><span style="font-size:0.8rem;padding:2px 8px;background:var(--bg-input);border-radius:10px;">${it.role_name || '-'}</span></td>
-          <td style="font-weight:800;font-family:var(--font-heading);color:var(--accent-green);">${it.total_days_present} Hari</td>
-          <td style="font-weight:800;font-family:var(--font-heading);">${it.total_work_hours} Jam (${formatWorkMinutes(it.total_work_minutes)})</td>
+          <td style="font-weight:700;color:var(--text-heading);">${it.employee_name || '0'}</td>
+          <td><span style="font-size:0.8rem;padding:2px 8px;background:var(--bg-input);border-radius:10px;">${it.role_name || '0'}</span></td>
+          <td style="font-weight:800;font-family:var(--font-heading);color:var(--accent-green);">${totalDays} Hari</td>
+          <td style="font-weight:800;font-family:var(--font-heading);">${totalHours} Jam (${formatWorkMinutes(totalMins)})</td>
           <td style="font-weight:700;color:var(--text-muted);">${avgHours} Jam/Hari</td>
-          <td><span style="color:${it.late_count > 0 ? 'var(--accent-red)' : 'var(--text-muted)'};font-weight:700;">${it.late_count} Kali</span></td>
+          <td><span style="color:${lateCount > 0 ? 'var(--accent-red)' : 'var(--text-muted)'};font-weight:700;">${lateCount} Kali</span></td>
         </tr>
       `;
     }).join('');

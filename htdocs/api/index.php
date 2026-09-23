@@ -584,31 +584,159 @@ if ($parts[0] === 'reports') {
     $sub = $parts[1] ?? 'dashboard';
 
     if ($sub === 'dashboard') {
-        $todaySales = 0;
-        $todayTrx = 0;
+        $outletId = intval($_GET['outlet_id'] ?? 1);
+        $period = $_GET['period'] ?? 'today';
+        $startDate = $_GET['start_date'] ?? null;
+        $endDate = $_GET['end_date'] ?? null;
+
+        $grossSales = 0.0;
+        $netSales = 0.0;
+        $grossProfit = 0.0;
+        $totalTrx = 0;
+        $avgSale = 0.0;
         $activeShift = null;
-        $topItems = [];
+        $categoriesByVolume = [];
+        $categoriesBySales = [];
+        $topItemsByCategory = [];
         $lowStocks = [];
         $tablesSummary = ['total_tables' => 0, 'occupied_tables' => 0, 'available_tables' => 0];
 
         if ($db) {
             try {
-                $outletId = intval($_GET['outlet_id'] ?? 1);
+                // Build date filter clause
+                $dateClause = "AND DATE(t.created_at) = CURRENT_DATE";
+                $dateParams = [];
 
-                // Total Sales Today
-                $stmt = $db->prepare("
-                    SELECT COALESCE(SUM(total_amount), 0) AS total_sales, COUNT(*) AS trx_count
-                    FROM transactions
-                    WHERE outlet_id = ? AND DATE(created_at) = CURRENT_DATE AND payment_status = 'paid'
-                ");
-                $stmt->execute([$outletId]);
-                $todayRow = $stmt->fetch();
-                if ($todayRow) {
-                    $todaySales = (float)($todayRow['total_sales'] ?? 0);
-                    $todayTrx = (int)($todayRow['trx_count'] ?? 0);
+                if ($startDate && $endDate) {
+                    $dateClause = "AND DATE(t.created_at) BETWEEN ? AND ?";
+                    $dateParams = [$startDate, $endDate];
+                } elseif ($startDate) {
+                    $dateClause = "AND DATE(t.created_at) >= ?";
+                    $dateParams = [$startDate];
+                } elseif ($period === 'yesterday') {
+                    $dateClause = "AND DATE(t.created_at) = DATE('now', '-1 day')";
+                } elseif ($period === 'last_7_days') {
+                    $dateClause = "AND DATE(t.created_at) >= DATE('now', '-7 days')";
+                } elseif ($period === 'last_30_days') {
+                    $dateClause = "AND DATE(t.created_at) >= DATE('now', '-30 days')";
+                } elseif ($period === 'this_month') {
+                    $dateClause = "AND strftime('%Y-%m', t.created_at) = strftime('%Y-%m', 'now')";
+                } elseif ($period === 'all') {
+                    $dateClause = "";
                 }
 
-                // Active shift
+                // 1. KPI Financials
+                $paramsM = array_merge([$outletId], $dateParams);
+                $stmt = $db->prepare("
+                    SELECT 
+                        COALESCE(SUM(t.subtotal), 0) AS gross_sales,
+                        COALESCE(SUM(t.total_amount), 0) AS net_sales,
+                        COUNT(DISTINCT t.id) AS total_trx
+                    FROM transactions t
+                    WHERE t.outlet_id = ? AND t.payment_status = 'paid' {$dateClause}
+                ");
+                $stmt->execute($paramsM);
+                $rowM = $stmt->fetch();
+                if ($rowM) {
+                    $grossSales = (float)($rowM['gross_sales'] ?? 0);
+                    $netSales = (float)($rowM['net_sales'] ?? 0);
+                    $totalTrx = (int)($rowM['total_trx'] ?? 0);
+                    $avgSale = $totalTrx > 0 ? round($netSales / $totalTrx, 2) : 0.0;
+                }
+
+                // 2. COGS & Gross Profit
+                $stmtCogs = $db->prepare("
+                    SELECT COALESCE(SUM(COALESCE(i.cost_price, 0) * ti.quantity), 0) AS total_cogs
+                    FROM transaction_items ti
+                    JOIN transactions t ON ti.transaction_id = t.id
+                    JOIN items i ON ti.item_id = i.id
+                    WHERE t.outlet_id = ? AND t.payment_status = 'paid' {$dateClause}
+                ");
+                $stmtCogs->execute($paramsM);
+                $rowCogs = $stmtCogs->fetch();
+                $totalCogs = (float)($rowCogs['total_cogs'] ?? 0);
+                $grossProfit = max(0.0, $netSales - $totalCogs);
+
+                // 3. Categories by Volume
+                $stmtCatVol = $db->prepare("
+                    SELECT 
+                        COALESCE(c.id, 0) AS category_id,
+                        COALESCE(c.name, 'Lainnya') AS category_name,
+                        COALESCE(SUM(ti.quantity), 0) AS total_volume
+                    FROM transaction_items ti
+                    JOIN transactions t ON ti.transaction_id = t.id
+                    JOIN items i ON ti.item_id = i.id
+                    LEFT JOIN categories c ON i.category_id = c.id
+                    WHERE t.outlet_id = ? AND t.payment_status = 'paid' {$dateClause}
+                    GROUP BY c.id, c.name
+                    ORDER BY total_volume DESC
+                ");
+                $stmtCatVol->execute($paramsM);
+                $rawVol = $stmtCatVol->fetchAll() ?: [];
+                $totVol = 0;
+                foreach ($rawVol as $rv) { $totVol += (int)$rv['total_volume']; }
+                $totVol = $totVol > 0 ? $totVol : 1;
+                foreach ($rawVol as $rv) {
+                    $v = (int)$rv['total_volume'];
+                    $categoriesByVolume[] = [
+                        'category_id' => $rv['category_id'],
+                        'category_name' => $rv['category_name'],
+                        'total_volume' => $v,
+                        'percentage' => round(($v / $totVol) * 100, 1)
+                    ];
+                }
+
+                // 4. Categories by Sales
+                $stmtCatSls = $db->prepare("
+                    SELECT 
+                        COALESCE(c.id, 0) AS category_id,
+                        COALESCE(c.name, 'Lainnya') AS category_name,
+                        COALESCE(SUM(ti.subtotal_price), 0) AS total_sales
+                    FROM transaction_items ti
+                    JOIN transactions t ON ti.transaction_id = t.id
+                    JOIN items i ON ti.item_id = i.id
+                    LEFT JOIN categories c ON i.category_id = c.id
+                    WHERE t.outlet_id = ? AND t.payment_status = 'paid' {$dateClause}
+                    GROUP BY c.id, c.name
+                    ORDER BY total_sales DESC
+                ");
+                $stmtCatSls->execute($paramsM);
+                $rawSls = $stmtCatSls->fetchAll() ?: [];
+                $totSls = 0.0;
+                foreach ($rawSls as $rs) { $totSls += (float)$rs['total_sales']; }
+                $totSls = $totSls > 0 ? $totSls : 1.0;
+                foreach ($rawSls as $rs) {
+                    $s = (float)$rs['total_sales'];
+                    $categoriesBySales[] = [
+                        'category_id' => $rs['category_id'],
+                        'category_name' => $rs['category_name'],
+                        'total_sales' => $s,
+                        'percentage' => round(($s / $totSls) * 100, 1)
+                    ];
+                }
+
+                // 5. Top items by category
+                $stmtTop = $db->prepare("
+                    SELECT 
+                        i.id AS item_id,
+                        i.name AS item_name,
+                        COALESCE(c.name, 'Lainnya') AS category_name,
+                        i.price AS item_price,
+                        COALESCE(SUM(ti.quantity), 0) AS qty_sold,
+                        COALESCE(SUM(ti.subtotal_price), 0) AS total_revenue
+                    FROM transaction_items ti
+                    JOIN transactions t ON ti.transaction_id = t.id
+                    JOIN items i ON ti.item_id = i.id
+                    LEFT JOIN categories c ON i.category_id = c.id
+                    WHERE t.outlet_id = ? AND t.payment_status = 'paid' {$dateClause}
+                    GROUP BY i.id, i.name, c.name, i.price
+                    ORDER BY qty_sold DESC, total_revenue DESC
+                    LIMIT 15
+                ");
+                $stmtTop->execute($paramsM);
+                $topItemsByCategory = $stmtTop->fetchAll() ?: [];
+
+                // 6. Active shift
                 $stmt = $db->prepare("
                     SELECT s.id, s.start_time, s.initial_cash, s.expected_cash, e.name AS cashier_name
                     FROM shifts s
@@ -622,20 +750,7 @@ if ($parts[0] === 'reports') {
                     $activeShift = $shiftRow;
                 }
 
-                // Top items
-                $stmt = $db->prepare("
-                    SELECT i.name, SUM(ti.quantity) AS qty_sold, SUM(ti.subtotal_price) AS revenue
-                    FROM transaction_items ti
-                    JOIN transactions t ON ti.transaction_id = t.id
-                    JOIN items i ON ti.item_id = i.id
-                    WHERE t.outlet_id = ? AND DATE(t.created_at) = CURRENT_DATE AND t.payment_status = 'paid'
-                    GROUP BY i.id, i.name
-                    ORDER BY qty_sold DESC LIMIT 5
-                ");
-                $stmt->execute([$outletId]);
-                $topItems = $stmt->fetchAll() ?: [];
-
-                // Low stock
+                // 7. Low stock
                 $stmt = $db->prepare("
                     SELECT ing.id, ing.name, ing.unit, ois.current_stock, ing.min_stock_alert
                     FROM outlet_ingredient_stocks ois
@@ -646,7 +761,7 @@ if ($parts[0] === 'reports') {
                 $stmt->execute([$outletId]);
                 $lowStocks = $stmt->fetchAll() ?: [];
 
-                // Tables
+                // 8. Tables
                 $stmt = $db->prepare("
                     SELECT 
                         COUNT(*) AS total_tables,
@@ -664,25 +779,28 @@ if ($parts[0] === 'reports') {
                     ];
                 }
             } catch (Exception $e) {
-                // Keep default 0
+                // Keep defaults
             }
         }
 
-        // Jika tidak ada transaksi, omzet hari ini pasti 0
-        if ($todayTrx === 0) {
-            $todaySales = 0;
-        }
-
         jsonOut([
-            'outlet_id' => intval($_GET['outlet_id'] ?? 1),
-            'today_sales' => $todaySales,
-            'today_transactions' => $todayTrx,
-            'total_sales_today' => $todaySales,
-            'transaction_count_today' => $todayTrx,
+            'outlet_id' => $outletId,
+            'period' => $period,
+            'gross_sales' => $grossSales,
+            'net_sales' => $netSales,
+            'gross_profit' => $grossProfit,
+            'total_transactions' => $totalTrx,
+            'avg_sale' => $avgSale,
+            'today_sales' => $netSales,
+            'today_transactions' => $totalTrx,
+            'total_sales_today' => $netSales,
+            'transaction_count_today' => $totalTrx,
+            'categories_by_volume' => $categoriesByVolume,
+            'categories_by_sales' => $categoriesBySales,
+            'top_items_by_category' => $topItemsByCategory,
             'active_shift' => $activeShift,
-            'top_selling_items' => $topItems,
-            'low_stock_alerts' => $lowStocks,
-            'tables' => $tablesSummary
+            'tables' => $tablesSummary,
+            'low_stock_alerts' => $lowStocks
         ]);
     }
 

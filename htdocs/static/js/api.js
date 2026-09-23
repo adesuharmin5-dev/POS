@@ -2,10 +2,30 @@
 const API_BASE = '/api';
 
 const api = {
+  // Convert any value to safe finite number (default 0)
+  toSafeNumber(val, fallback = 0) {
+    if (val === null || val === undefined || val === '' || val === 'undefined' || val === 'NaN') {
+      return fallback;
+    }
+    const num = Number(val);
+    return (!isFinite(num) || isNaN(num)) ? fallback : num;
+  },
+
+  // Convert empty/undefined/nan to safe string (default '0')
+  toSafeString(val, fallback = '0') {
+    if (val === null || val === undefined || val === '' || val === 'undefined' || val === 'NaN') {
+      return fallback;
+    }
+    return String(val);
+  },
+
   // Format currency helper (IDR)
   formatRupiah(number) {
+    if (number === null || number === undefined || number === '' || number === 'undefined' || number === 'NaN') {
+      return 'Rp 0';
+    }
     const val = Number(number);
-    const safeNumber = (!isFinite(val) || isNaN(val) || number === null || number === undefined) ? 0 : val;
+    const safeNumber = (!isFinite(val) || isNaN(val)) ? 0 : val;
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
@@ -194,8 +214,11 @@ const api = {
     });
   },
 
-  getDashboard(outletId = 1) {
-    return this.request(`/reports/dashboard?outlet_id=${outletId}`);
+  getDashboard(outletId = 1, period = 'today', startDate = null, endDate = null) {
+    let url = `/reports/dashboard?outlet_id=${outletId}&period=${encodeURIComponent(period)}`;
+    if (startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
+    return this.request(url);
   },
 
   getSalesReport(outletId = 1) {

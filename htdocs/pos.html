@@ -192,129 +192,156 @@
   <!-- ===================== APP SHELL ===================== -->
   <div class="app-shell" id="app-shell">
 
-    <!-- ===== SIDEBAR ===== -->
-    <aside class="sidebar" id="sidebar">
+    <!-- ===== SIDEBAR ALA MOKA POS ===== -->
+    <aside class="sidebar moka-sidebar" id="sidebar">
 
-      <!-- Brand / Logo -->
-      <div class="sidebar-brand">
-        <div class="sidebar-logo">
-          <span class="sidebar-logo-icon">🍞</span>
-        </div>
-        <div class="sidebar-brand-text">
-          <span class="sidebar-brand-name" id="brand-header-title">TERAS &bull; MANIS</span>
-          <span class="sidebar-brand-sub" id="brand-badge-text">Roti &amp; Minuman</span>
+      <!-- Brand / Logo Moka Style -->
+      <div class="sidebar-brand-moka">
+        <div class="moka-logo-wrap">
+          <span class="moka-logo-word">moka</span>
         </div>
       </div>
 
-      <!-- Nav Groups -->
-      <nav class="sidebar-nav">
-
-        <div class="sidebar-section-label">MENU UTAMA</div>
-
-        <button class="sidebar-item active" data-target="view-pos" id="nav-btn-pos">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          </span>
-          <span class="sidebar-label">Kasir POS</span>
-        </button>
-
-        <button class="sidebar-item" data-target="view-dashboard" id="nav-btn-dashboard">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          </span>
-          <span class="sidebar-label">Dashboard</span>
-        </button>
-
-        <button class="sidebar-item" data-target="view-tables" id="nav-btn-tables">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          </span>
-          <span class="sidebar-label">Denah Meja</span>
-        </button>
-
-        <button class="sidebar-item" data-target="view-inventory" id="nav-btn-inventory">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-          </span>
-          <span class="sidebar-label">Stok &amp; Resep</span>
-        </button>
-
-        <button class="sidebar-item" data-target="view-shifts" id="nav-btn-shifts">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </span>
-          <span class="sidebar-label">Shift &amp; Riwayat</span>
-        </button>
-
-        <button class="sidebar-item" data-target="view-attendance" id="nav-btn-attendance">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
-          </span>
-          <span class="sidebar-label">Absensi Karyawan</span>
-        </button>
-
-        <div class="sidebar-section-label" style="margin-top:1.5rem;">MASTER DATA</div>
-
-        <!-- Master Data expandable -->
-        <button class="sidebar-item" id="sidebar-master-toggle" onclick="toggleSidebarMaster()">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          </span>
-          <span class="sidebar-label">Master Data</span>
-          <span class="sidebar-chevron" id="master-chevron">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <!-- User Profile Card with Dropdown (ade suharmin) -->
+      <div class="sidebar-profile-box" id="sidebar-profile-box">
+        <button type="button" class="sidebar-profile-btn" onclick="toggleSidebarUserMenu(event)" title="Menu Akun Kasir / Petugas">
+          <span class="profile-username" id="sidebar-cashier-name">ade suharmin</span>
+          <span class="profile-chevron">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </span>
         </button>
 
-        <div class="sidebar-submenu" id="sidebar-master-sub">
-          <button class="sidebar-subitem" onclick="openMasterTab('kategori')">🏷️ Kategori</button>
-          <button class="sidebar-subitem" onclick="openMasterTab('barang')">📦 Barang / Menu</button>
-          <button class="sidebar-subitem" onclick="openMasterTab('harga')">💰 Harga &amp; HPP</button>
-          <button class="sidebar-subitem" onclick="openMasterTab('ukuran')">📏 Ukuran (Size)</button>
-          <button class="sidebar-subitem" onclick="openMasterTab('gula')">🍯 Level Gula</button>
-          <button class="sidebar-subitem" onclick="openMasterTab('toping')">🍨 Topping &amp; Add-ons</button>
-          <button class="sidebar-subitem" onclick="openMasterTab('jabatan')">🛡️ Jabatan &amp; Peran</button>
+        <!-- Profile Dropdown Menu -->
+        <div class="profile-dropdown-menu" id="profile-dropdown-menu">
+          <div class="dropdown-user-header">
+            <strong id="dropdown-full-name">Ade Suharmin</strong>
+            <span id="dropdown-role-title">Store Manager / Owner</span>
+          </div>
+          <div class="dropdown-menu-sep"></div>
+          <button type="button" class="dropdown-menu-item" onclick="openSettingsTab('akun')">
+            <span>👤</span> Pengaturan Akun
+          </button>
+          <button type="button" class="dropdown-menu-item" onclick="lockPOS()">
+            <span>🔒</span> Kunci Layar (PIN)
+          </button>
+          <button type="button" class="dropdown-menu-item danger" onclick="logoutAccountToLanding()">
+            <span>🚪</span> Keluar Akun
+          </button>
         </div>
+      </div>
 
-        <div class="sidebar-section-label" style="margin-top:1.5rem;">SISTEM</div>
+      <!-- Moka Nav Items -->
+      <nav class="sidebar-nav moka-nav">
 
-        <button class="sidebar-item" data-target="view-settings" id="nav-btn-settings">
-          <span class="sidebar-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </span>
-          <span class="sidebar-label">Pengaturan</span>
+        <!-- 1. DASHBOARD -->
+        <button class="sidebar-item active" data-target="view-dashboard" id="nav-btn-dashboard" onclick="navigateToView('view-dashboard')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">DASHBOARD</span>
+        </button>
+
+        <!-- 2. REPORTS -->
+        <button class="sidebar-item" data-target="view-shifts" id="nav-btn-shifts" onclick="navigateToView('view-shifts')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">REPORTS</span>
+        </button>
+
+        <!-- 3. LIBRARY (Master Data) -->
+        <button class="sidebar-item" data-target="view-master" id="nav-btn-master" onclick="navigateToView('view-master', 'barang')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">LIBRARY</span>
+        </button>
+
+        <!-- 4. INGREDIENT (Resep BOM) -->
+        <button class="sidebar-item" data-target="view-inventory" id="nav-btn-ingredient" onclick="openInventoryTab('recipe')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">INGREDIENT</span>
+        </button>
+
+        <!-- 5. INVENTORY (Stok) -->
+        <button class="sidebar-item" data-target="view-inventory" id="nav-btn-inventory" onclick="openInventoryTab('stock')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">INVENTORY</span>
+        </button>
+
+        <!-- 6. ONLINE CHANNELS (Katalog Teras Manis) -->
+        <a href="/" target="_blank" class="sidebar-item" id="nav-btn-online" title="Buka Katalog Web Pemesanan Mandiri Teras Manis">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">ONLINE CHANNELS</span>
+          <span class="ext-link-icon">↗</span>
+        </a>
+
+        <!-- 7. CUSTOMERS -->
+        <button class="sidebar-item" data-target="view-customers" id="nav-btn-customers" onclick="openCustomersModal()">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">CUSTOMERS</span>
+        </button>
+
+        <!-- 8. EMPLOYEES (Absensi & Manajemen Staf) -->
+        <button class="sidebar-item" data-target="view-attendance" id="nav-btn-attendance" onclick="navigateToView('view-attendance')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">EMPLOYEES</span>
+        </button>
+
+        <!-- 9. CUSTOMER DISPLAY / POS KASIR -->
+        <button class="sidebar-item" data-target="view-pos" id="nav-btn-pos" onclick="navigateToView('view-pos')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">CUSTOMER DISPLAY</span>
+        </button>
+
+        <!-- 10. TABLE MANAGEMENT -->
+        <button class="sidebar-item" data-target="view-tables" id="nav-btn-tables" onclick="navigateToView('view-tables')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">TABLE MANAGEMENT</span>
+        </button>
+
+        <!-- 11. PARTNER SOLUTIONS -->
+        <button class="sidebar-item" id="nav-btn-partners" onclick="openPartnerSolutionsModal()">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">PARTNER SOLUTIONS</span>
+          <span class="pill-badge-new">NEW</span>
+        </button>
+
+        <!-- 12. PAYMENTS -->
+        <button class="sidebar-item" data-target="view-settings" id="nav-btn-payments" onclick="navigateToView('view-settings', 'struk')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">PAYMENTS</span>
+        </button>
+
+        <!-- 13. ACCOUNT SETTINGS -->
+        <button class="sidebar-item" data-target="view-settings" id="nav-btn-settings" onclick="navigateToView('view-settings', 'toko')">
+          <span class="sidebar-arrow">&rsaquo;</span>
+          <span class="sidebar-label">ACCOUNT SETTINGS</span>
+          <span class="dot-badge-red"></span>
         </button>
 
       </nav>
 
-      <!-- Sidebar Footer -->
-      <div class="sidebar-footer">
-        <div class="sidebar-user-card" onclick="lockPOS()" title="Petugas Kasir Aktif (Klik untuk Kunci Layar)">
-          <div class="sidebar-user-avatar" id="sidebar-user-initial">A</div>
-          <div class="sidebar-user-details">
-            <span class="sidebar-user-name" id="sidebar-cashier-name">Ade Suharmin</span>
-            <span class="sidebar-user-role" id="sidebar-cashier-role">Store Manager</span>
-          </div>
-        </div>
-        <div class="sidebar-shift-status" id="sidebar-shift-status">
-          <span class="shift-pulse"></span>
-          <span id="shift-status-text">Memeriksa...</span>
-        </div>
-        <div class="sidebar-actions-grid">
-          <button class="sidebar-lock-btn" onclick="lockPOS()" title="Kunci Kasir (PIN)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <span>Kunci</span>
-          </button>
-          <button class="sidebar-logout-btn" onclick="logoutAccountToLanding()" title="Keluar Akun Toko ke Landing Page">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            <span>Logout</span>
-          </button>
-        </div>
+      <!-- Sidebar Bottom Moka -->
+      <div class="sidebar-bottom-moka">
+        <a href="tel:1500970" class="moka-call-center" title="Call Center Dukungan">
+          <span class="call-icon">📞</span>
+          <span class="call-number">1500970</span>
+        </a>
+        <button type="button" class="btn-moka-help" onclick="openTutorialsModal()" title="Tutorials &amp; Panduan Penggunaan">
+          <span class="help-circle-icon">ℹ</span>
+          <span>Tutorials &amp; Help</span>
+        </button>
       </div>
+
     </aside>
 
     <!-- ===== MAIN CONTENT ===== -->
     <div class="main-content">
+
+      <!-- Trial Notification Banner (Sesuai Referensi Gambar Moka) -->
+      <div class="moka-trial-banner" id="moka-trial-banner">
+        <div class="trial-banner-left">
+          <span class="trial-banner-text">Your trial will end in <strong>14 day(s)</strong></span>
+        </div>
+        <div class="trial-banner-right">
+          <button type="button" class="btn-trial-subscribe" onclick="openSubscribeModal()">Subscribe Now</button>
+        </div>
+      </div>
 
       <!-- Top Bar -->
       <header class="topbar">
@@ -361,7 +388,7 @@
       <div class="page-views">
 
         <!-- ================= 1. POS CASHIER VIEW ================= -->
-        <section id="view-pos" class="view-section active">
+        <section id="view-pos" class="view-section">
           <div class="pos-layout">
             <!-- Catalog Panel (Left) -->
             <div class="pos-catalog-panel">
@@ -438,68 +465,126 @@
           </div>
         </section>
 
-        <!-- ================= 2. DASHBOARD VIEW ================= -->
-        <section id="view-dashboard" class="view-section">
-          <div class="dashboard-grid">
-            <!-- KPI Row -->
-            <div class="kpi-row">
-              <div class="kpi-card">
-                <div class="kpi-icon gold">💰</div>
-                <div class="kpi-info">
-                  <h4>Omzet Hari Ini</h4>
-                  <div class="kpi-value" id="dash-today-sales">Rp 0</div>
+        <!-- ================= 2. DASHBOARD VIEW (MODERN B2B POS ANALYTICS) ================= -->
+        <section id="view-dashboard" class="view-section active">
+          <div class="moka-dash-wrapper">
+            
+            <!-- Dashboard Action Bar & Period Filter -->
+            <div class="dash-action-bar">
+              <div class="dash-period-filters" id="dash-period-filters">
+                <button type="button" class="period-btn active" data-period="today" onclick="selectDashPeriod('today', this)">Hari Ini</button>
+                <button type="button" class="period-btn" data-period="yesterday" onclick="selectDashPeriod('yesterday', this)">Kemarin</button>
+                <button type="button" class="period-btn" data-period="last_7_days" onclick="selectDashPeriod('last_7_days', this)">7 Hari Terakhir</button>
+                <button type="button" class="period-btn" data-period="last_30_days" onclick="selectDashPeriod('last_30_days', this)">30 Hari Terakhir</button>
+                <button type="button" class="period-btn" data-period="this_month" onclick="selectDashPeriod('this_month', this)">Bulan Ini</button>
+              </div>
+
+              <div class="dash-action-tools">
+                <div class="dash-outlet-indicator">
+                  <span class="outlet-live-dot"></span>
+                  <span id="dash-outlet-name">Teras Manis &bull; Outlet Utama</span>
+                </div>
+                <button type="button" class="btn-dash-refresh" onclick="refreshDashboardData()" title="Segarkan Data Real-Time">
+                  <span class="btn-icon">🔄</span>
+                  <span>Segarkan</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Top KPI Cards Grid -->
+            <div class="dash-kpi-grid">
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-head">
+                  <span class="kpi-label">PENJUALAN KOTOR</span>
+                  <span class="kpi-pill">Gross</span>
+                </div>
+                <div class="dash-kpi-val" id="dash-gross-sales">Rp 0</div>
+                <div class="dash-kpi-desc">Total nominal pesanan sebelum potongan</div>
+              </div>
+
+              <div class="dash-kpi-card highlight-green">
+                <div class="dash-kpi-head">
+                  <span class="kpi-label">PENJUALAN BERSIH</span>
+                  <span class="kpi-pill green">Net</span>
+                </div>
+                <div class="dash-kpi-val text-green" id="dash-net-sales">Rp 0</div>
+                <div class="dash-kpi-desc">Total omzet riil terbayar kasir</div>
+              </div>
+
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-head">
+                  <span class="kpi-label">KEUNTUNGAN KOTOR</span>
+                  <span class="kpi-pill blue">Profit</span>
+                </div>
+                <div class="dash-kpi-val" id="dash-gross-profit">Rp 0</div>
+                <div class="dash-kpi-desc">Estimasi laba kotor (Omzet dikurangi HPP)</div>
+              </div>
+
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-head">
+                  <span class="kpi-label">TOTAL TRANSAKSI</span>
+                  <span class="kpi-pill slate">Trx</span>
+                </div>
+                <div class="dash-kpi-val" id="dash-total-trx">0</div>
+                <div class="dash-kpi-desc">Jumlah struk belanja selesai terbayar</div>
+              </div>
+
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-head">
+                  <span class="kpi-label">RATA-RATA PENJUALAN</span>
+                  <span class="kpi-pill amber">Avg</span>
+                </div>
+                <div class="dash-kpi-val" id="dash-avg-sale">Rp 0</div>
+                <div class="dash-kpi-desc">Nilai transaksi rata-rata pelanggan</div>
+              </div>
+            </div>
+
+            <!-- Middle Split Panels (Sesuai Referensi Gambar) -->
+            <div class="dash-two-columns">
+              
+              <!-- Card Kiri: KATEGORI BERDASARKAN VOLUME -->
+              <div class="dash-box-card">
+                <div class="dash-box-header">
+                  <h3 class="dash-box-title">KATEGORI BERDASARKAN VOLUME</h3>
+                </div>
+                <div class="dash-box-body" id="dash-cat-volume-body">
+                  <div class="moka-empty-state">
+                    <p>Tidak ada data</p>
+                  </div>
                 </div>
               </div>
 
-              <div class="kpi-card">
-                <div class="kpi-icon green">🧾</div>
-                <div class="kpi-info">
-                  <h4>Total Transaksi Selesai</h4>
-                  <div class="kpi-value" id="dash-today-trx">0</div>
+              <!-- Card Kanan: KATEGORI BERDASARKAN PENJUALAN -->
+              <div class="dash-box-card">
+                <div class="dash-box-header">
+                  <h3 class="dash-box-title">KATEGORI BERDASARKAN PENJUALAN</h3>
+                </div>
+                <div class="dash-box-body" id="dash-cat-sales-body">
+                  <div class="moka-empty-state">
+                    <p>Tidak ada data</p>
+                  </div>
                 </div>
               </div>
 
-              <div class="kpi-card">
-                <div class="kpi-icon blue">🪑</div>
-                <div class="kpi-info">
-                  <h4>Utilisasi Meja</h4>
-                  <div class="kpi-value" id="dash-table-occupancy">0%</div>
+            </div>
+
+            <!-- Bottom Full-Width Panel (Sesuai Referensi Gambar) -->
+            <div class="dash-box-card full-width">
+              <div class="dash-box-header flex-between">
+                <h3 class="dash-box-title">ITEM TERATAS BERDASARKAN KATEGORI</h3>
+                <div class="dash-box-actions">
+                  <select id="dash-top-items-cat-filter" onchange="filterTopItemsCategory(this.value)" class="dash-select-filter">
+                    <option value="all">Semua Kategori</option>
+                  </select>
                 </div>
               </div>
-
-              <div class="kpi-card">
-                <div class="kpi-icon purple">💵</div>
-                <div class="kpi-info">
-                  <h4>Kas Laci Shift Aktif</h4>
-                  <div class="kpi-value" id="dash-active-shift-cash">Rp 0</div>
+              <div class="dash-box-body" id="dash-top-items-body">
+                <div class="moka-empty-state">
+                  <p>Tidak ada data</p>
                 </div>
               </div>
             </div>
 
-            <!-- Dashboard Details -->
-            <div class="dashboard-details-row">
-              <!-- Top Selling Menu -->
-              <div class="panel-box">
-                <div class="panel-title">
-                  <span>⭐ Menu Terlaris Hari Ini</span>
-                  <span style="font-size:0.8rem;color:var(--primary);font-weight:600;">Real-Time</span>
-                </div>
-                <div class="rank-list" id="dash-top-items-list">
-                  <!-- Populated via JS -->
-                </div>
-              </div>
-
-              <!-- Stock Alerts -->
-              <div class="panel-box">
-                <div class="panel-title">
-                  <span>⚠️ Peringatan Stok Bahan Baku</span>
-                  <span style="font-size:0.8rem;color:var(--accent-red);font-weight:600;">Ambang Batas Minimum</span>
-                </div>
-                <div class="rank-list" id="dash-low-stock-list">
-                  <!-- Populated via JS -->
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -1555,6 +1640,174 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           <span>Keluar Akun Toko (Logout)</span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Status Langganan & Masa Percobaan -->
+  <div class="modal-backdrop" id="subscribe-modal">
+    <div class="modal-box" style="max-width:520px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.4rem;">⭐</span>
+          <div>
+            <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--text-heading);">Status Lisensi &amp; Masa Percobaan</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Informasi paket operasional POS Cafe aktif</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeSubscribeModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem;">
+        <div style="background:var(--bg-card);border:1px solid var(--border-medium);border-radius:var(--radius-md);padding:1.2rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+            <span style="font-weight:800;font-size:1.05rem;color:var(--text-heading);">Moka POS Cafe Pro Trial</span>
+            <span style="padding:3px 10px;border-radius:var(--radius-full);background:var(--accent-amber-glow);color:var(--accent-amber);font-size:0.75rem;font-weight:700;border:1px solid rgba(217,119,6,0.3);">Sisa 14 Hari</span>
+          </div>
+          <p style="font-size:0.84rem;color:var(--text-muted);margin:0 0 0.75rem;">Masa uji coba lengkap dengan semua fitur backoffice, denah meja, resep BOM, dan absensi aktif.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.8rem;color:var(--text-main);">
+            <div>✓ Transaksi Kasir Tanpa Batas</div>
+            <div>✓ Resep Otomatis &amp; Stok Bahan</div>
+            <div>✓ Denah Meja &amp; Multi-Zone</div>
+            <div>✓ Struk Thermal &amp; QRIS Dinamis</div>
+          </div>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-muted);line-height:1.4;">
+          Untuk berlangganan paket tahunan atau menambah kuota outlet, hubungi tim support kami atau pilih upgrade di Pengaturan Toko.
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:0.6rem;">
+        <button type="button" class="btn-cancel" onclick="closeSubscribeModal()">Tutup</button>
+        <button type="button" class="btn-save" onclick="openSettingsTab('toko'); closeSubscribeModal();">Buka Pengaturan Toko</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Customers / Pelanggan -->
+  <div class="modal-backdrop" id="customers-modal">
+    <div class="modal-box" style="max-width:680px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.4rem;">👥</span>
+          <div>
+            <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--text-heading);">Manajemen Pelanggan &amp; Loyalitas</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Daftar data member dan riwayat belanja tamu cafe</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeCustomersModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem;">
+        <div style="display:flex;gap:0.6rem;justify-content:space-between;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="customer-search-input" placeholder="🔍 Cari nama pelanggan / no. HP..." style="flex:1;min-width:200px;padding:0.6rem 0.85rem;border-radius:var(--radius-sm);border:1px solid var(--border-medium);background:var(--bg-input);color:var(--text-main);font-size:0.85rem;" oninput="filterCustomerList(this.value)" />
+          <button type="button" onclick="api.showToast('Fitur tambah member siap!', 'info')" style="padding:0.6rem 1rem;background:var(--primary);border:none;border-radius:var(--radius-sm);color:#fff;font-weight:700;font-size:0.82rem;cursor:pointer;">+ Tambah Member</button>
+        </div>
+        <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border-subtle);border-radius:var(--radius-md);">
+          <table style="width:100%;border-collapse:collapse;font-size:0.84rem;">
+            <thead>
+              <tr style="background:var(--bg-input);border-bottom:1px solid var(--border-medium);text-align:left;">
+                <th style="padding:0.65rem 0.85rem;">Nama</th>
+                <th style="padding:0.65rem 0.85rem;">No. HP</th>
+                <th style="padding:0.65rem 0.85rem;text-align:center;">Poin</th>
+                <th style="padding:0.65rem 0.85rem;text-align:right;">Total Belanja</th>
+              </tr>
+            </thead>
+            <tbody id="customers-table-body">
+              <tr>
+                <td style="padding:0.65rem 0.85rem;font-weight:700;">Pelanggan Umum (Walk-in)</td>
+                <td style="padding:0.65rem 0.85rem;color:var(--text-muted);">0</td>
+                <td style="padding:0.65rem 0.85rem;text-align:center;">0</td>
+                <td style="padding:0.65rem 0.85rem;text-align:right;font-weight:700;color:var(--primary);">Rp 0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;">
+        <button type="button" class="btn-cancel" onclick="closeCustomersModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Partner Solutions -->
+  <div class="modal-backdrop" id="partner-solutions-modal">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.4rem;">🚀</span>
+          <div>
+            <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--text-heading);">Solusi Mitra &amp; Ekosistem POS</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Integrasi hardware dan layanan pihak ketiga untuk outlet</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closePartnerSolutionsModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:0.85rem;">
+        <div style="display:flex;gap:0.85rem;align-items:center;padding:0.9rem;border:1px solid var(--border-medium);border-radius:var(--radius-md);background:var(--bg-card);">
+          <div style="font-size:1.8rem;">🖨️</div>
+          <div style="flex:1;">
+            <strong style="color:var(--text-heading);font-size:0.92rem;">Printer Thermal ESC/POS (58mm / 80mm)</strong>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Cetak nota langsung via browser print, USB, atau Bluetooth thermal printer.</p>
+          </div>
+          <span style="padding:3px 9px;border-radius:var(--radius-full);background:var(--accent-green-bg);color:var(--accent-green);font-size:0.75rem;font-weight:700;">🟢 Terhubung</span>
+        </div>
+        <div style="display:flex;gap:0.85rem;align-items:center;padding:0.9rem;border:1px solid var(--border-medium);border-radius:var(--radius-md);background:var(--bg-card);">
+          <div style="font-size:1.8rem;">📱</div>
+          <div style="flex:1;">
+            <strong style="color:var(--text-heading);font-size:0.92rem;">QRIS Dinamis &amp; Statis Bank Indonesia</strong>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Terima pembayaran dari GoPay, OVO, Dana, BCA, Mandiri via QRIS otomatis.</p>
+          </div>
+          <span style="padding:3px 9px;border-radius:var(--radius-full);background:var(--accent-green-bg);color:var(--accent-green);font-size:0.75rem;font-weight:700;">🟢 Aktif</span>
+        </div>
+        <div style="display:flex;gap:0.85rem;align-items:center;padding:0.9rem;border:1px solid var(--border-medium);border-radius:var(--radius-md);background:var(--bg-card);">
+          <div style="font-size:1.8rem;">💬</div>
+          <div style="flex:1;">
+            <strong style="color:var(--text-heading);font-size:0.92rem;">WhatsApp Order &amp; Notification Gateway</strong>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Pesan online mandiri pelanggan terkirim otomatis ke WhatsApp kasir.</p>
+          </div>
+          <span style="padding:3px 9px;border-radius:var(--radius-full);background:var(--accent-green-bg);color:var(--accent-green);font-size:0.75rem;font-weight:700;">🟢 Aktif</span>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;">
+        <button type="button" class="btn-cancel" onclick="closePartnerSolutionsModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Tutorials & Help -->
+  <div class="modal-backdrop" id="tutorials-modal">
+    <div class="modal-box" style="max-width:580px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.4rem;">ℹ️</span>
+          <div>
+            <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--text-heading);">Panduan Penggunaan &amp; Bantuan</h3>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:var(--text-muted);">Pusat edukasi operasional kasir dan manajemen cafe</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeTutorialsModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:0.75rem;font-size:0.85rem;color:var(--text-main);">
+        <div style="padding:0.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);">
+          <strong>1. Cara Membuka Shift Kasir:</strong>
+          <p style="margin:4px 0 0;color:var(--text-muted);font-size:0.8rem;">Pilih menu <em>REPORTS</em> lalu klik tombol <em>Buka Shift Baru</em>, masukkan modal kas awal.</p>
+        </div>
+        <div style="padding:0.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);">
+          <strong>2. Pemesanan &amp; Transaksi Cepat:</strong>
+          <p style="margin:4px 0 0;color:var(--text-muted);font-size:0.8rem;">Pilih menu <em>CUSTOMER DISPLAY</em> untuk terminal kasir, klik item, tentukan opsi gula/topping, pilih meja, lalu klik Bayar.</p>
+        </div>
+        <div style="padding:0.75rem;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);background:var(--bg-card);">
+          <strong>3. Rekap Analitik Dashboard:</strong>
+          <p style="margin:4px 0 0;color:var(--text-muted);font-size:0.8rem;">Pilih menu <em>DASHBOARD</em> untuk melihat ranking kategori berdasarkan volume, penjualan, dan item teratas.</p>
+        </div>
+        <div style="padding:0.75rem;border:1px dashed var(--primary-glow);border-radius:var(--radius-sm);background:var(--primary-subtle);display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.5rem;">📞</span>
+          <div>
+            <strong>Pusat Kontak Layanan Pelanggan:</strong>
+            <p style="margin:2px 0 0;color:var(--primary);font-weight:700;">Hubungi 1500970 (Jam Operasional 08:00 - 22:00 WIB)</p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;">
+        <button type="button" class="btn-cancel" onclick="closeTutorialsModal()">Tutup</button>
       </div>
     </div>
   </div>

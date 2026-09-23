@@ -7,8 +7,14 @@ from app.services.report_service import get_dashboard_summary, get_sales_report,
 router = APIRouter(prefix="/reports", tags=["Analytics & Reports"])
 
 @router.get("/dashboard")
-def get_dashboard(outlet_id: int, db: sqlite3.Connection = Depends(get_db)):
-    return get_dashboard_summary(db, outlet_id)
+def get_dashboard(
+    outlet_id: int = 1,
+    period: Optional[str] = "today",
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: sqlite3.Connection = Depends(get_db)
+):
+    return get_dashboard_summary(db, outlet_id, period, start_date, end_date)
 
 @router.get("/sales")
 def get_sales(

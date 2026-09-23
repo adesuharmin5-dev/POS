@@ -154,9 +154,14 @@ const tmState = {
   sheetSelectedToppings: []
 };
 
-// Format Rupiah
+// Format Rupiah (aman dari undefined dan NaN)
 function formatRp(num) {
-  return 'Rp ' + Number(num).toLocaleString('id-ID');
+  if (num === null || num === undefined || num === '' || num === 'undefined' || num === 'NaN') {
+    return 'Rp 0';
+  }
+  const val = Number(num);
+  const safeNumber = (!isFinite(val) || isNaN(val)) ? 0 : val;
+  return 'Rp ' + safeNumber.toLocaleString('id-ID');
 }
 
 // ------------------------------------------------------------
@@ -250,26 +255,31 @@ function renderMenuGrid() {
   const container = document.getElementById('tm-jar-grid');
   if (!container) return;
 
-  const size = tmState.globalSize;
+  const size = tmState.globalSize || 'small';
 
-  container.innerHTML = TM_DATA.roti.map(item => {
-    const currentPrice = size === 'small' ? item.priceSmall : item.priceLarge;
+  container.innerHTML = (TM_DATA.roti || []).map(item => {
+    const rawPrice = size === 'small' ? item.priceSmall : item.priceLarge;
+    const currentPrice = (rawPrice !== null && rawPrice !== undefined && rawPrice !== '' && !isNaN(Number(rawPrice))) ? Number(rawPrice) : 0;
     const sizeLabel = size === 'small' ? 'Porsi Small' : 'Porsi Large';
+    const badge = (item.badge !== null && item.badge !== undefined && item.badge !== '' && item.badge !== 'undefined' && item.badge !== 'NaN') ? item.badge : '0';
+    const itemName = item.name || '0';
+    const itemDesc = item.desc || '0';
+    const itemIcon = item.icon || '🍞';
 
     return `
-      <article class="jar-card" onclick="openBottomSheet('${item.id}')" title="Klik untuk pilih rasa ${item.name}">
+      <article class="jar-card" onclick="openBottomSheet('${item.id}')" title="Klik untuk pilih rasa ${itemName}">
         <div class="jar-lid"></div>
         <div class="jar-body">
-          <span class="jar-badge-tag">${item.badge}</span>
-          <div class="jar-icon-wrap">${item.icon}</div>
-          <h3 class="jar-name">${item.name}</h3>
-          <p class="jar-desc">${item.desc}</p>
+          <span class="jar-badge-tag">${badge}</span>
+          <div class="jar-icon-wrap">${itemIcon}</div>
+          <h3 class="jar-name">${itemName}</h3>
+          <p class="jar-desc">${itemDesc}</p>
           <div class="jar-footer">
             <div class="jar-price-box">
               <span class="jar-price-label">${sizeLabel}</span>
               <span class="jar-price-value">${formatRp(currentPrice)}</span>
             </div>
-            <button type="button" class="btn-jar-add" onclick="event.stopPropagation(); openBottomSheet('${item.id}');" title="Pilih ${item.name}">
+            <button type="button" class="btn-jar-add" onclick="event.stopPropagation(); openBottomSheet('${item.id}');" title="Pilih ${itemName}">
               +
             </button>
           </div>
@@ -383,15 +393,20 @@ function changeSheetQty(delta) {
 
 function calculateSheetItemPrice() {
   if (!tmState.sheetItem) return 0;
-  const basePrice = tmState.sheetSize === 'small' ? tmState.sheetItem.priceSmall : tmState.sheetItem.priceLarge;
+  const rawBase = tmState.sheetSize === 'small' ? tmState.sheetItem.priceSmall : tmState.sheetItem.priceLarge;
+  const basePrice = (rawBase !== null && rawBase !== undefined && !isNaN(Number(rawBase))) ? Number(rawBase) : 0;
   
   let toppingsPrice = 0;
-  tmState.sheetSelectedToppings.forEach(tId => {
-    const topping = TM_DATA.toppings.find(t => t.id === tId);
-    if (topping) toppingsPrice += topping.price;
+  (tmState.sheetSelectedToppings || []).forEach(tId => {
+    const topping = (TM_DATA.toppings || []).find(t => t.id === tId);
+    if (topping) {
+      const topP = Number(topping.price);
+      toppingsPrice += (!isNaN(topP) ? topP : 0);
+    }
   });
 
-  return (basePrice + toppingsPrice) * tmState.sheetQty;
+  const qty = Number(tmState.sheetQty) || 0;
+  return (basePrice + toppingsPrice) * qty;
 }
 
 function updateSheetTotalPrice() {
@@ -406,39 +421,44 @@ function addSheetItemToCart() {
   if (!tmState.sheetItem) return;
 
   const item = tmState.sheetItem;
-  const size = tmState.sheetSize;
-  const basePrice = size === 'small' ? item.priceSmall : item.priceLarge;
+  const size = tmState.sheetSize || 'small';
+  const rawBase = size === 'small' ? item.priceSmall : item.priceLarge;
+  const basePrice = (rawBase !== null && rawBase !== undefined && !isNaN(Number(rawBase))) ? Number(rawBase) : 0;
 
-  const chosenToppings = tmState.sheetSelectedToppings.map(tId => {
-    return TM_DATA.toppings.find(t => t.id === tId);
+  const chosenToppings = (tmState.sheetSelectedToppings || []).map(tId => {
+    return (TM_DATA.toppings || []).find(t => t.id === tId);
   }).filter(Boolean);
 
   let toppingsExtra = 0;
-  chosenToppings.forEach(t => toppingsExtra += t.price);
+  chosenToppings.forEach(t => {
+    const topP = Number(t.price);
+    toppingsExtra += (!isNaN(topP) ? topP : 0);
+  });
   const unitPrice = basePrice + toppingsExtra;
+  const safeQty = Number(tmState.sheetQty) || 1;
 
   // Cek apakah ada item yang sama persis di keranjang (id, size, dan topping sama)
   const toppingsKey = chosenToppings.map(t => t.id).sort().join(',');
   const existingIndex = tmState.cart.findIndex(c => c.id === item.id && c.size === size && c.toppingsKey === toppingsKey);
 
   if (existingIndex > -1) {
-    tmState.cart[existingIndex].qty += tmState.sheetQty;
+    tmState.cart[existingIndex].qty += safeQty;
     tmState.cart[existingIndex].subtotal = tmState.cart[existingIndex].qty * unitPrice;
   } else {
     tmState.cart.push({
       id: item.id,
-      name: item.name,
-      icon: item.icon,
+      name: item.name || '0',
+      icon: item.icon || '🍞',
       size: size,
       unitPrice: unitPrice,
-      qty: tmState.sheetQty,
-      subtotal: tmState.sheetQty * unitPrice,
+      qty: safeQty,
+      subtotal: safeQty * unitPrice,
       toppings: chosenToppings,
       toppingsKey: toppingsKey
     });
   }
 
-  showToast(`${item.name} (${size.toUpperCase()}) masuk keranjang!`);
+  showToast(`${item.name || 'Menu'} (${size.toUpperCase()}) masuk keranjang!`);
   closeBottomSheet();
   updateCartBadge();
 }
@@ -449,10 +469,10 @@ function quickAddSusuBanner() {
 }
 
 function updateCartBadge() {
-  const totalItems = tmState.cart.reduce((sum, item) => sum + item.qty, 0);
+  const totalItems = (tmState.cart || []).reduce((sum, item) => sum + (Number(item.qty) || 0), 0);
   const badge = document.getElementById('nav-cart-badge');
   if (badge) {
-    badge.textContent = totalItems;
+    badge.textContent = totalItems || 0;
     if (totalItems > 0) {
       badge.classList.add('visible');
     } else {
@@ -508,8 +528,8 @@ function renderCartPage() {
     `;
   }).join('');
 
-  // Hitung total
-  const subtotal = tmState.cart.reduce((sum, item) => sum + item.subtotal, 0);
+  // Hitung total (aman dari NaN)
+  const subtotal = (tmState.cart || []).reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
   const packagingFee = 2000; // Dus toples ramah lingkungan
   const grandTotal = subtotal + packagingFee;
 
@@ -525,7 +545,9 @@ function changeCartItemQty(index, delta) {
   if (tmState.cart[index].qty <= 0) {
     tmState.cart.splice(index, 1);
   } else {
-    tmState.cart[index].subtotal = tmState.cart[index].qty * tmState.cart[index].unitPrice;
+    const safeQty = Number(tmState.cart[index].qty) || 0;
+    const safeUnitPrice = Number(tmState.cart[index].unitPrice) || 0;
+    tmState.cart[index].subtotal = safeQty * safeUnitPrice;
   }
 
   updateCartBadge();
@@ -556,7 +578,7 @@ function handleCheckout() {
   const customerName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : 'Pelanggan Teras Manis';
   const notes = (noteInput && noteInput.value.trim()) ? noteInput.value.trim() : '-';
 
-  const subtotal = tmState.cart.reduce((sum, item) => sum + item.subtotal, 0);
+  const subtotal = (tmState.cart || []).reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
   const packagingFee = 2000;
   const grandTotal = subtotal + packagingFee;
 
