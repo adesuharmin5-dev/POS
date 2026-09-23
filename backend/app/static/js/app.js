@@ -854,6 +854,17 @@ function loadViewData(viewId, subTab = null, forceLoad = false) {
     loadInventory();
   } else if (viewId === 'view-shifts') {
     loadShiftsAndHistory();
+    // Auto-init report tab: set today's date and load daily report
+    const dailyDateEl = document.getElementById('rpt-daily-date');
+    if (dailyDateEl && !dailyDateEl.value) {
+      dailyDateEl.value = new Date().toISOString().slice(0, 10);
+    }
+    const now = new Date();
+    const monthEl = document.getElementById('rpt-month-month');
+    const yearEl  = document.getElementById('rpt-month-year');
+    if (monthEl && !monthEl.value) monthEl.value = now.getMonth() + 1;
+    if (yearEl  && !yearEl.value)  yearEl.value  = now.getFullYear();
+    loadDailyReport();
   } else if (viewId === 'view-attendance') {
     loadAttendance().then(() => {
       const tab = subTab || state.activeAttendanceTab || sessionStorage.getItem('aurora_attendance_subtab') || 'cards';
@@ -2422,6 +2433,321 @@ async function voidTrx(trxId) {
   } catch (err) {
     api.showToast(`Gagal membatalkan transaksi: ${err.message}`, 'error');
   }
+}
+
+// ==========================================================================
+// REPORTS MODULE — Tab switching + 5 loaders
+// ==========================================================================
+
+function _reportEmptyRow(cols, msg = 'Tidak ada data') {
+  return `<tr><td colspan="${cols}" style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.83rem;">${msg}</td></tr>`;
+}
+
+function switchReportTab(tab) {
+  document.querySelectorAll('.report-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.report-tab-panel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`.report-tab-btn[data-tab="${tab}"]`);
+  const panel = document.getElementById(`report-tab-${tab}`);
+  if (btn) btn.classList.add('active');
+  if (panel) panel.classList.add('active');
+
+  // Auto-load on first switch
+  if (tab === 'harian') loadDailyReport();
+  if (tab === 'bulanan') loadMonthlyReport();
+  if (tab === 'keuntungan') loadProfitReport();
+  if (tab === 'modal') loadStockValueReport();
+}
+
+// ── LAPORAN HARIAN ──────────────────────────────────────────────────────────
+async function loadDailyReport() {
+  try {
+    const dateEl = document.getElementById('rpt-daily-date');
+    const date = dateEl ? dateEl.value : null;
+    const data = await api.getDailyReport(state.activeOutletId, date || null);
+    const s = data.summary || {};
+
+    _setText('daily-net-sales', api.formatRupiah(s.net_sales || 0));
+    _setText('daily-profit',    api.formatRupiah(s.gross_profit || 0));
+    _setText('daily-margin',    `${s.profit_margin || 0}%`);
+    _setText('daily-trx-count', s.total_transactions || 0);
+    _setText('daily-avg-trx',   api.formatRupiah(s.avg_transaction || 0));
+    _setText('daily-cogs',      api.formatRupiah(s.cogs || 0));
+
+    // Hourly
+    const hourlyBody = document.getElementById('daily-hourly-body');
+    const hourlyRows = (data.hourly_breakdown || []);
+    hourlyBody.innerHTML = hourlyRows.length
+      ? hourlyRows.map(r => `<tr>
+          <td>${r.hour}:00</td>
+          <td class="num">${r.trx_count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total_sales || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Payment methods
+    const pmBody = document.getElementById('daily-payment-body');
+    const pmRows = (data.payment_methods || []);
+    pmBody.innerHTML = pmRows.length
+      ? pmRows.map(r => `<tr>
+          <td>${r.method || '-'}</td>
+          <td class="num">${r.count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Top items
+    const itemsBody = document.getElementById('daily-items-body');
+    const itemRows = (data.top_items || []);
+    itemsBody.innerHTML = itemRows.length
+      ? itemRows.map((r, i) => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cogs || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(7);
+
+  } catch (err) {
+    console.error('Daily report error:', err);
+  }
+}
+
+// ── LAPORAN BULANAN ──────────────────────────────────────────────────────────
+async function loadMonthlyReport() {
+  try {
+    const monthEl = document.getElementById('rpt-month-month');
+    const yearEl  = document.getElementById('rpt-month-year');
+    const month = monthEl ? parseInt(monthEl.value) : null;
+    const year  = yearEl  ? parseInt(yearEl.value)  : null;
+    const data = await api.getMonthlyReport(state.activeOutletId, year || null, month || null);
+    const s = data.summary || {};
+
+    _setText('monthly-net-sales',   api.formatRupiah(s.net_sales || 0));
+    _setText('monthly-profit',      api.formatRupiah(s.gross_profit || 0));
+    _setText('monthly-margin',      `${s.profit_margin || 0}%`);
+    _setText('monthly-trx-count',   s.total_transactions || 0);
+    _setText('monthly-active-days', s.active_days || 0);
+    _setText('monthly-avg-day',     api.formatRupiah(s.avg_per_day || 0));
+
+    // Daily breakdown
+    const dailyBody = document.getElementById('monthly-daily-body');
+    const dailyRows = (data.daily_breakdown || []);
+    dailyBody.innerHTML = dailyRows.length
+      ? dailyRows.map(r => `<tr>
+          <td>${r.day || '-'}</td>
+          <td class="num">${r.trx_count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total_sales || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Categories
+    const catBody = document.getElementById('monthly-cat-body');
+    const catRows = (data.categories || []);
+    catBody.innerHTML = catRows.length
+      ? catRows.map(r => `<tr>
+          <td>${r.category_name || '-'}</td>
+          <td class="num">${r.qty_sold || 0}</td>
+          <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Top items
+    const itemsBody = document.getElementById('monthly-items-body');
+    const itemRows = (data.top_items || []);
+    itemsBody.innerHTML = itemRows.length
+      ? itemRows.map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+  } catch (err) {
+    console.error('Monthly report error:', err);
+  }
+}
+
+// ── LAPORAN KUSTOM ──────────────────────────────────────────────────────────
+async function loadCustomReport() {
+  try {
+    const startDate = document.getElementById('rpt-custom-start')?.value;
+    const endDate   = document.getElementById('rpt-custom-end')?.value;
+    if (!startDate || !endDate) {
+      api.showToast('Pilih tanggal mulai dan tanggal akhir terlebih dahulu.', 'info');
+      return;
+    }
+    const data = await api.getCustomReport(state.activeOutletId, startDate, endDate);
+    const s = data.summary || {};
+
+    _setText('custom-net-sales',   api.formatRupiah(s.net_sales || 0));
+    _setText('custom-profit',      api.formatRupiah(s.gross_profit || 0));
+    _setText('custom-margin',      `${s.profit_margin || 0}%`);
+    _setText('custom-trx-count',   s.total_transactions || 0);
+    _setText('custom-active-days', s.active_days || 0);
+    _setText('custom-avg-day',     api.formatRupiah(s.avg_per_day || 0));
+
+    const dailyBody = document.getElementById('custom-daily-body');
+    const dailyRows = (data.daily_breakdown || []);
+    dailyBody.innerHTML = dailyRows.length
+      ? dailyRows.map(r => `<tr>
+          <td>${r.day || '-'}</td>
+          <td class="num">${r.trx_count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total_sales || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    const pmBody = document.getElementById('custom-payment-body');
+    pmBody.innerHTML = (data.payment_methods || []).length
+      ? (data.payment_methods).map(r => `<tr>
+          <td>${r.method || '-'}</td>
+          <td class="num">${r.count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    const itemsBody = document.getElementById('custom-items-body');
+    itemsBody.innerHTML = (data.top_items || []).length
+      ? (data.top_items).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cogs || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(7);
+
+  } catch (err) {
+    console.error('Custom report error:', err);
+  }
+}
+
+// ── LAPORAN KEUNTUNGAN ───────────────────────────────────────────────────────
+async function loadProfitReport() {
+  try {
+    const period    = document.getElementById('rpt-profit-period')?.value || 'this_month';
+    const startDate = document.getElementById('rpt-profit-start')?.value || null;
+    const endDate   = document.getElementById('rpt-profit-end')?.value || null;
+    const data = await api.getProfitReport(state.activeOutletId, period, startDate || null, endDate || null);
+    const s = data.summary || {};
+
+    _setText('profit-net-sales', api.formatRupiah(s.net_sales || 0));
+    _setText('profit-cogs',      api.formatRupiah(s.total_cogs || 0));
+    _setText('profit-gross',     api.formatRupiah(s.gross_profit || 0));
+    _setText('profit-margin',    `${s.profit_margin || 0}%`);
+
+    // Categories
+    const catBody = document.getElementById('profit-cat-body');
+    catBody.innerHTML = (data.categories || []).length
+      ? (data.categories).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.category_name}</strong></td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cogs || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+    // Items
+    const itemsBody = document.getElementById('profit-items-body');
+    itemsBody.innerHTML = (data.items || []).length
+      ? (data.items).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong><br><span style="font-size:0.72rem;color:var(--text-muted);">${r.category_name || ''}</span></td>
+            <td class="num">${api.formatRupiah(r.sell_price || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cost_price || 0)}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+  } catch (err) {
+    console.error('Profit report error:', err);
+  }
+}
+
+// ── LAPORAN MODAL BARANG ─────────────────────────────────────────────────────
+async function loadStockValueReport() {
+  try {
+    const data = await api.getStockValueReport(state.activeOutletId);
+
+    _setText('stock-total-value',       api.formatRupiah(data.total_ingredient_stock_value || 0));
+    _setText('stock-total-ingredients', data.total_ingredients || 0);
+    _setText('stock-low-count',         data.low_stock_count || 0);
+
+    // Ingredient stocks
+    const ingBody = document.getElementById('stock-ingredients-body');
+    ingBody.innerHTML = (data.ingredients || []).length
+      ? (data.ingredients).map(r => {
+          const isLow = r.is_low;
+          const badge = isLow
+            ? '<span class="badge-low">⚠ Menipis</span>'
+            : '<span class="badge-ok">✓ Aman</span>';
+          return `<tr>
+            <td><strong>${r.name}</strong></td>
+            <td class="muted">${r.unit || '-'}</td>
+            <td class="num ${isLow ? 'red' : ''}">${(r.current_stock || 0).toLocaleString('id-ID')}</td>
+            <td class="num">${api.formatRupiah(r.cost_per_unit || 0)}</td>
+            <td class="num">${api.formatRupiah(r.stock_value || 0)}</td>
+            <td>${badge}</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+    // Menu items HPP
+    const menuBody = document.getElementById('stock-menu-body');
+    menuBody.innerHTML = (data.menu_items || []).length
+      ? (data.menu_items).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${api.formatRupiah(r.sell_price || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cost_price || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit_per_unit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+  } catch (err) {
+    console.error('Stock value report error:', err);
+  }
+}
+
+// Helper: set text content safely
+function _setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = (val === null || val === undefined || val !== val) ? '0' : String(val);
 }
 
 function openCloseShiftModal() {

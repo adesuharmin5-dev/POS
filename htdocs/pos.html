@@ -699,13 +699,176 @@
           </div>
         </section>
 
-        <!-- ================= 5. SHIFTS & HISTORY VIEW ================= -->
+        <!-- ================= 5. SHIFTS & HISTORY / REPORTS VIEW ================= -->
         <section id="view-shifts" class="view-section">
           <div style="display:flex;flex-direction:column;gap:1.6rem;">
+
             <!-- Shift Overview Card -->
-            <div class="panel-box" id="shift-active-card">
-              <!-- Populated via JS -->
-            </div>
+            <div class="panel-box" id="shift-active-card"><!-- Populated via JS --></div>
+
+            <!-- ===== LAPORAN TABS ===== -->
+            <div class="panel-box" style="padding:0;overflow:hidden;">
+              <!-- Tab Navigation -->
+              <div class="report-tab-nav">
+                <button class="report-tab-btn active" data-tab="harian" onclick="switchReportTab('harian')">📅 Harian</button>
+                <button class="report-tab-btn" data-tab="bulanan" onclick="switchReportTab('bulanan')">📆 Bulanan</button>
+                <button class="report-tab-btn" data-tab="kustom" onclick="switchReportTab('kustom')">🗓️ Kustom</button>
+                <button class="report-tab-btn" data-tab="keuntungan" onclick="switchReportTab('keuntungan')">💹 Keuntungan</button>
+                <button class="report-tab-btn" data-tab="modal" onclick="switchReportTab('modal')">📦 Modal Barang</button>
+              </div>
+
+              <!-- =================== TAB: HARIAN =================== -->
+              <div class="report-tab-panel active" id="report-tab-harian">
+                <div class="report-filter-bar">
+                  <label class="report-filter-label">Tanggal</label>
+                  <input type="date" id="rpt-daily-date" class="report-date-input" onchange="loadDailyReport()">
+                  <button class="report-btn-primary" onclick="loadDailyReport()">Tampilkan</button>
+                </div>
+                <div class="report-kpi-grid">
+                  <div class="report-kpi-card"><div class="report-kpi-label">Omzet Bersih</div><div class="report-kpi-value" id="daily-net-sales">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Laba Kotor</div><div class="report-kpi-value green" id="daily-profit">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Margin</div><div class="report-kpi-value" id="daily-margin">0%</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Transaksi</div><div class="report-kpi-value" id="daily-trx-count">0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Rata-rata Transaksi</div><div class="report-kpi-value" id="daily-avg-trx">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">HPP / COGS</div><div class="report-kpi-value muted" id="daily-cogs">Rp 0</div></div>
+                </div>
+                <div class="report-split-grid">
+                  <div>
+                    <div class="report-section-title">📊 Per Jam</div>
+                    <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Jam</th><th>Transaksi</th><th>Total</th></tr></thead><tbody id="daily-hourly-body"></tbody></table></div>
+                  </div>
+                  <div>
+                    <div class="report-section-title">💳 Metode Bayar</div>
+                    <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Metode</th><th>Trx</th><th>Total</th></tr></thead><tbody id="daily-payment-body"></tbody></table></div>
+                  </div>
+                </div>
+                <div class="report-section-title" style="margin-top:1.2rem;">🏆 Item Terlaris Hari Ini</div>
+                <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Menu</th><th>Kategori</th><th>Terjual</th><th>Omzet</th><th>HPP</th><th>Laba</th><th>Margin</th></tr></thead><tbody id="daily-items-body"></tbody></table></div>
+              </div>
+
+              <!-- =================== TAB: BULANAN =================== -->
+              <div class="report-tab-panel" id="report-tab-bulanan">
+                <div class="report-filter-bar">
+                  <label class="report-filter-label">Bulan</label>
+                  <select id="rpt-month-month" class="report-date-input" style="width:130px;" onchange="loadMonthlyReport()">
+                    <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option>
+                    <option value="5">Mei</option><option value="6">Juni</option><option value="7">Juli</option><option value="8">Agustus</option>
+                    <option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+                  </select>
+                  <label class="report-filter-label">Tahun</label>
+                  <input type="number" id="rpt-month-year" class="report-date-input" style="width:90px;" min="2020" max="2099" onchange="loadMonthlyReport()">
+                  <button class="report-btn-primary" onclick="loadMonthlyReport()">Tampilkan</button>
+                </div>
+                <div class="report-kpi-grid">
+                  <div class="report-kpi-card"><div class="report-kpi-label">Omzet Bersih</div><div class="report-kpi-value" id="monthly-net-sales">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Laba Kotor</div><div class="report-kpi-value green" id="monthly-profit">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Margin</div><div class="report-kpi-value" id="monthly-margin">0%</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Total Transaksi</div><div class="report-kpi-value" id="monthly-trx-count">0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Hari Aktif</div><div class="report-kpi-value" id="monthly-active-days">0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Rata-rata / Hari</div><div class="report-kpi-value" id="monthly-avg-day">Rp 0</div></div>
+                </div>
+                <div class="report-split-grid">
+                  <div>
+                    <div class="report-section-title">📈 Penjualan Harian</div>
+                    <div style="overflow-x:auto;max-height:320px;"><table class="report-table"><thead><tr><th>Tanggal</th><th>Transaksi</th><th>Total</th></tr></thead><tbody id="monthly-daily-body"></tbody></table></div>
+                  </div>
+                  <div>
+                    <div class="report-section-title">🗂️ Per Kategori</div>
+                    <div style="overflow-x:auto;max-height:320px;"><table class="report-table"><thead><tr><th>Kategori</th><th>Terjual</th><th>Omzet</th></tr></thead><tbody id="monthly-cat-body"></tbody></table></div>
+                  </div>
+                </div>
+                <div class="report-section-title" style="margin-top:1.2rem;">🏆 Item Terlaris Bulan Ini</div>
+                <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Menu</th><th>Kategori</th><th>Terjual</th><th>Omzet</th><th>Laba</th><th>Margin</th></tr></thead><tbody id="monthly-items-body"></tbody></table></div>
+              </div>
+
+              <!-- =================== TAB: KUSTOM =================== -->
+              <div class="report-tab-panel" id="report-tab-kustom">
+                <div class="report-filter-bar">
+                  <label class="report-filter-label">Dari</label>
+                  <input type="date" id="rpt-custom-start" class="report-date-input">
+                  <label class="report-filter-label">Sampai</label>
+                  <input type="date" id="rpt-custom-end" class="report-date-input">
+                  <button class="report-btn-primary" onclick="loadCustomReport()">Tampilkan</button>
+                </div>
+                <div class="report-kpi-grid">
+                  <div class="report-kpi-card"><div class="report-kpi-label">Omzet Bersih</div><div class="report-kpi-value" id="custom-net-sales">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Laba Kotor</div><div class="report-kpi-value green" id="custom-profit">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Margin</div><div class="report-kpi-value" id="custom-margin">0%</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Transaksi</div><div class="report-kpi-value" id="custom-trx-count">0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Hari Aktif</div><div class="report-kpi-value" id="custom-active-days">0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Rata-rata / Hari</div><div class="report-kpi-value" id="custom-avg-day">Rp 0</div></div>
+                </div>
+                <div class="report-split-grid">
+                  <div>
+                    <div class="report-section-title">📅 Breakdown Harian</div>
+                    <div style="overflow-x:auto;max-height:320px;"><table class="report-table"><thead><tr><th>Tanggal</th><th>Transaksi</th><th>Total</th></tr></thead><tbody id="custom-daily-body"></tbody></table></div>
+                  </div>
+                  <div>
+                    <div class="report-section-title">💳 Metode Bayar</div>
+                    <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Metode</th><th>Trx</th><th>Total</th></tr></thead><tbody id="custom-payment-body"></tbody></table></div>
+                  </div>
+                </div>
+                <div class="report-section-title" style="margin-top:1.2rem;">🏆 Item Terlaris</div>
+                <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Menu</th><th>Kategori</th><th>Terjual</th><th>Omzet</th><th>HPP</th><th>Laba</th><th>Margin</th></tr></thead><tbody id="custom-items-body"></tbody></table></div>
+              </div>
+
+              <!-- =================== TAB: KEUNTUNGAN =================== -->
+              <div class="report-tab-panel" id="report-tab-keuntungan">
+                <div class="report-filter-bar">
+                  <label class="report-filter-label">Periode</label>
+                  <select id="rpt-profit-period" class="report-date-input" onchange="loadProfitReport()">
+                    <option value="today">Hari Ini</option>
+                    <option value="yesterday">Kemarin</option>
+                    <option value="last_7_days">7 Hari Terakhir</option>
+                    <option value="last_30_days">30 Hari Terakhir</option>
+                    <option value="this_month" selected>Bulan Ini</option>
+                    <option value="all">Semua Waktu</option>
+                  </select>
+                  <label class="report-filter-label" style="margin-left:1rem;">Atau Rentang</label>
+                  <input type="date" id="rpt-profit-start" class="report-date-input">
+                  <span style="color:var(--text-muted);">—</span>
+                  <input type="date" id="rpt-profit-end" class="report-date-input">
+                  <button class="report-btn-primary" onclick="loadProfitReport()">Tampilkan</button>
+                </div>
+                <div class="profit-summary-banner">
+                  <div class="profit-banner-item"><span class="profit-banner-label">Omzet Bersih</span><span class="profit-banner-value" id="profit-net-sales">Rp 0</span></div>
+                  <div class="profit-banner-sep"></div>
+                  <div class="profit-banner-item"><span class="profit-banner-label">Total HPP</span><span class="profit-banner-value muted" id="profit-cogs">Rp 0</span></div>
+                  <div class="profit-banner-sep"></div>
+                  <div class="profit-banner-item"><span class="profit-banner-label">Laba Kotor</span><span class="profit-banner-value green" id="profit-gross">Rp 0</span></div>
+                  <div class="profit-banner-sep"></div>
+                  <div class="profit-banner-item"><span class="profit-banner-label">Margin</span><span class="profit-banner-value green" id="profit-margin">0%</span></div>
+                </div>
+                <div class="report-split-grid">
+                  <div>
+                    <div class="report-section-title">🗂️ Laba per Kategori</div>
+                    <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Kategori</th><th>Terjual</th><th>Omzet</th><th>HPP</th><th>Laba</th><th>Margin</th></tr></thead><tbody id="profit-cat-body"></tbody></table></div>
+                  </div>
+                  <div>
+                    <div class="report-section-title">🏆 Laba per Menu (Top 20)</div>
+                    <div style="overflow-x:auto;max-height:360px;"><table class="report-table"><thead><tr><th>Menu</th><th>Harga Jual</th><th>HPP</th><th>Terjual</th><th>Laba</th><th>Margin</th></tr></thead><tbody id="profit-items-body"></tbody></table></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- =================== TAB: MODAL BARANG =================== -->
+              <div class="report-tab-panel" id="report-tab-modal">
+                <div class="report-filter-bar">
+                  <span style="color:var(--text-muted);font-size:0.85rem;">Data stok real-time dari gudang.</span>
+                  <button class="report-btn-primary" onclick="loadStockValueReport()" style="margin-left:auto;">🔄 Refresh</button>
+                </div>
+                <div class="report-kpi-grid">
+                  <div class="report-kpi-card"><div class="report-kpi-label">Total Nilai Stok Bahan</div><div class="report-kpi-value" id="stock-total-value">Rp 0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Total Bahan Baku</div><div class="report-kpi-value" id="stock-total-ingredients">0</div></div>
+                  <div class="report-kpi-card"><div class="report-kpi-label">Stok Menipis</div><div class="report-kpi-value red" id="stock-low-count">0</div></div>
+                </div>
+                <div class="report-section-title">🧂 Nilai Stok Bahan Baku</div>
+                <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Bahan</th><th>Satuan</th><th>Stok</th><th>Harga / Satuan</th><th>Nilai Stok</th><th>Status</th></tr></thead><tbody id="stock-ingredients-body"></tbody></table></div>
+                <div class="report-section-title" style="margin-top:1.5rem;">🍽️ HPP & Margin Menu Aktif</div>
+                <div style="overflow-x:auto;"><table class="report-table"><thead><tr><th>Menu</th><th>Kategori</th><th>Harga Jual</th><th>HPP (Cost)</th><th>Laba / Porsi</th><th>Margin</th></tr></thead><tbody id="stock-menu-body"></tbody></table></div>
+              </div>
+
+            </div><!-- end panel-box reports -->
 
             <!-- Past Transactions History -->
             <div class="panel-box">
@@ -716,21 +879,15 @@
                 <table class="inventory-table">
                   <thead>
                     <tr>
-                      <th>No. Transaksi</th>
-                      <th>Waktu</th>
-                      <th>Meja</th>
-                      <th>Total</th>
-                      <th>Metode Bayar</th>
-                      <th>Status</th>
-                      <th>Aksi</th>
+                      <th>No. Transaksi</th><th>Waktu</th><th>Meja</th><th>Total</th>
+                      <th>Metode Bayar</th><th>Status</th><th>Aksi</th>
                     </tr>
                   </thead>
-                  <tbody id="history-table-body">
-                    <!-- Populated via JS -->
-                  </tbody>
+                  <tbody id="history-table-body"><!-- Populated via JS --></tbody>
                 </table>
               </div>
             </div>
+
           </div>
         </section>
 

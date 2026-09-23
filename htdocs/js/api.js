@@ -229,6 +229,34 @@ const api = {
     return this.request(`/reports/tables?outlet_id=${outletId}`);
   },
 
+  getDailyReport(outletId = 1, date = null) {
+    let url = `/reports/daily?outlet_id=${outletId}`;
+    if (date) url += `&date=${encodeURIComponent(date)}`;
+    return this.request(url);
+  },
+
+  getMonthlyReport(outletId = 1, year = null, month = null) {
+    let url = `/reports/monthly?outlet_id=${outletId}`;
+    if (year)  url += `&year=${year}`;
+    if (month) url += `&month=${month}`;
+    return this.request(url);
+  },
+
+  getCustomReport(outletId = 1, startDate, endDate) {
+    return this.request(`/reports/custom?outlet_id=${outletId}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`);
+  },
+
+  getProfitReport(outletId = 1, period = 'this_month', startDate = null, endDate = null) {
+    let url = `/reports/profit?outlet_id=${outletId}&period=${encodeURIComponent(period)}`;
+    if (startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
+    return this.request(url);
+  },
+
+  getStockValueReport(outletId = 1) {
+    return this.request(`/reports/stock-value?outlet_id=${outletId}`);
+  },
+
   getTransactions(outletId = 1, limit = 20) {
     return this.request(`/pos/transactions?outlet_id=${outletId}&limit=${limit}`);
   },
