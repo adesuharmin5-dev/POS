@@ -418,14 +418,100 @@ if ($parts[0] === 'shifts') {
 }
 
 // -------------------------------------------------------------
-// 6. INVENTORY & INGREDIENTS
+// 6. INVENTORY & INGREDIENTS & RECIPES
 // -------------------------------------------------------------
 if ($parts[0] === 'inventory') {
+    $sub = $parts[1] ?? 'ingredients';
+
+    // Sub-route: /inventory/categories
+    if ($sub === 'categories') {
+        if ($db) {
+            try {
+                $stmt = $db->query("SELECT id, name, description FROM ingredient_categories ORDER BY id ASC");
+                $cats = $stmt->fetchAll();
+                if ($cats && count($cats) > 0) jsonOut($cats);
+            } catch (Exception $e) {}
+        }
+        jsonOut([
+            ['id' => 1, 'name' => 'Biji Kopi', 'description' => 'Bahan dasar kopi'],
+            ['id' => 2, 'name' => 'Susu & Dairy', 'description' => 'Produk susu dan olahannya'],
+            ['id' => 3, 'name' => 'Sirup & Pemanis', 'description' => 'Gula dan perasa'],
+            ['id' => 4, 'name' => 'Bahan Bakery', 'description' => 'Tepung dan bahan adonan']
+        ]);
+    }
+
+    // Sub-route: /inventory/recipes/{item_id}
+    if ($sub === 'recipes') {
+        $itemId = isset($parts[2]) ? (int)$parts[2] : 0;
+        if ($db && $itemId > 0) {
+            try {
+                $stmt = $db->prepare("
+                    SELECT r.id, r.item_id, r.ingredient_id, ing.name AS ingredient_name, r.quantity_used, r.unit
+                    FROM recipes r
+                    JOIN ingredients ing ON r.ingredient_id = ing.id
+                    WHERE r.item_id = ?
+                ");
+                $stmt->execute([$itemId]);
+                $recipes = $stmt->fetchAll();
+                if ($recipes && count($recipes) > 0) jsonOut($recipes);
+            } catch (Exception $e) {}
+        }
+
+        // Mock recipes by item ID
+        $recipeCatalog = [
+            1 => [ // Espresso / Americano
+                ['id' => 1, 'item_id' => 1, 'ingredient_name' => 'Biji Kopi House Blend', 'quantity_used' => 18, 'unit' => 'gram']
+            ],
+            2 => [ // Kopi Susu Aren Teras
+                ['id' => 2, 'item_id' => 2, 'ingredient_name' => 'Biji Kopi House Blend', 'quantity_used' => 18, 'unit' => 'gram'],
+                ['id' => 3, 'item_id' => 2, 'ingredient_name' => 'Fresh Milk Diamond', 'quantity_used' => 120, 'unit' => 'ml'],
+                ['id' => 4, 'item_id' => 2, 'ingredient_name' => 'Gula Aren Cair Organik', 'quantity_used' => 25, 'unit' => 'ml']
+            ],
+            3 => [ // Caffe Latte
+                ['id' => 5, 'item_id' => 3, 'ingredient_name' => 'Biji Kopi House Blend', 'quantity_used' => 18, 'unit' => 'gram'],
+                ['id' => 6, 'item_id' => 3, 'ingredient_name' => 'Fresh Milk Diamond', 'quantity_used' => 150, 'unit' => 'ml']
+            ],
+            4 => [ // Matcha Green Tea Latte
+                ['id' => 7, 'item_id' => 4, 'ingredient_name' => 'Matcha Powder Ceremonial', 'quantity_used' => 15, 'unit' => 'gram'],
+                ['id' => 8, 'item_id' => 4, 'ingredient_name' => 'Fresh Milk Diamond', 'quantity_used' => 150, 'unit' => 'ml'],
+                ['id' => 9, 'item_id' => 4, 'ingredient_name' => 'Gula Aren Cair Organik', 'quantity_used' => 15, 'unit' => 'ml']
+            ],
+            5 => [ // Roti Toast / Bakery
+                ['id' => 10, 'item_id' => 5, 'ingredient_name' => 'Tepung Roti Premix', 'quantity_used' => 100, 'unit' => 'gram']
+            ]
+        ];
+
+        if (isset($recipeCatalog[$itemId])) {
+            jsonOut($recipeCatalog[$itemId]);
+        } else {
+            jsonOut([
+                ['id' => 101, 'item_id' => $itemId, 'ingredient_name' => 'Bahan Baku Racikan', 'quantity_used' => 20, 'unit' => 'gram'],
+                ['id' => 102, 'item_id' => $itemId, 'ingredient_name' => 'Fresh Milk Diamond', 'quantity_used' => 100, 'unit' => 'ml']
+            ]);
+        }
+    }
+
+    // Default: /inventory/ingredients
+    if ($db) {
+        try {
+            $stmt = $db->query("
+                SELECT ing.id, ing.name, ing.unit, ing.cost_per_unit, ing.min_stock_alert,
+                       ic.name AS category_name, COALESCE(ois.current_stock, 0) AS current_stock
+                FROM ingredients ing
+                LEFT JOIN ingredient_categories ic ON ing.category_id = ic.id
+                LEFT JOIN outlet_ingredient_stocks ois ON ing.id = ois.ingredient_id
+                ORDER BY ing.id ASC
+            ");
+            $data = $stmt->fetchAll();
+            if ($data && count($data) > 0) jsonOut($data);
+        } catch (Exception $e) {}
+    }
+
     jsonOut([
-        ['id' => 1, 'name' => 'Biji Kopi House Blend', 'unit' => 'gram', 'current_stock' => 4500, 'min_stock' => 1000],
-        ['id' => 2, 'name' => 'Fresh Milk Diamond', 'unit' => 'ml', 'current_stock' => 12000, 'min_stock' => 3000],
-        ['id' => 3, 'name' => 'Gula Aren Cair Organik', 'unit' => 'ml', 'current_stock' => 3200, 'min_stock' => 800],
-        ['id' => 4, 'name' => 'Tepung Roti Premix', 'unit' => 'gram', 'current_stock' => 8000, 'min_stock' => 2000]
+        ['id' => 1, 'name' => 'Biji Kopi House Blend', 'category_name' => 'Biji Kopi', 'unit' => 'gram', 'current_stock' => 4500, 'min_stock_alert' => 1000, 'min_stock' => 1000, 'cost_per_unit' => 250],
+        ['id' => 2, 'name' => 'Fresh Milk Diamond', 'category_name' => 'Susu & Dairy', 'unit' => 'ml', 'current_stock' => 12000, 'min_stock_alert' => 3000, 'min_stock' => 3000, 'cost_per_unit' => 18],
+        ['id' => 3, 'name' => 'Gula Aren Cair Organik', 'category_name' => 'Sirup & Pemanis', 'unit' => 'ml', 'current_stock' => 3200, 'min_stock_alert' => 800, 'min_stock' => 800, 'cost_per_unit' => 45],
+        ['id' => 4, 'name' => 'Tepung Roti Premix', 'category_name' => 'Bahan Bakery', 'unit' => 'gram', 'current_stock' => 8000, 'min_stock_alert' => 2000, 'min_stock' => 2000, 'cost_per_unit' => 35]
     ]);
 }
 

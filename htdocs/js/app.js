@@ -1911,33 +1911,51 @@ function selectTableFromFloor(tableId, tableNum) {
 async function loadInventory() {
   try {
     const ingredients = await api.getIngredients(state.activeOutletId);
-    state.ingredients = ingredients;
+    state.ingredients = Array.isArray(ingredients) ? ingredients : [];
     const tbody = document.getElementById('inventory-table-body');
+    if (!tbody) return;
 
-    tbody.innerHTML = ingredients.map(ing => {
-      const isLow = ing.current_stock <= ing.min_stock_alert;
-      return `
-        <tr>
-          <td style="font-weight:700;color:var(--text-heading);">${ing.name}</td>
-          <td style="color:var(--text-muted);">${ing.category_name || '-'}</td>
-          <td style="font-weight:800; font-family:var(--font-heading); color: ${isLow ? 'var(--accent-red)' : 'var(--accent-green)'};">
-            ${ing.current_stock.toLocaleString()} ${ing.unit}
-          </td>
-          <td style="color:var(--text-muted);">${ing.min_stock_alert} ${ing.unit}</td>
-          <td style="font-weight:600;">${api.formatRupiah(ing.cost_per_unit)} / ${ing.unit}</td>
-          <td>
-            <span style="display:inline-block;padding:3px 10px;border-radius:var(--radius-full);font-size:0.76rem;font-weight:800;background:${isLow ? 'var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);' : 'var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);'}">
-              ${isLow ? '⚠️ Stok Menipis' : '✓ Stok Aman'}
-            </span>
-          </td>
-        </tr>
-      `;
-    }).join('');
+    if (state.ingredients.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Tidak ada data bahan baku.</td></tr>';
+    } else {
+      tbody.innerHTML = state.ingredients.map(ing => {
+        const rawMin = (ing.min_stock_alert !== undefined && ing.min_stock_alert !== null) ? ing.min_stock_alert : ing.min_stock;
+        const minAlert = (!isNaN(Number(rawMin)) && rawMin !== null && rawMin !== undefined) ? Number(rawMin) : 0;
+        const currentStock = (!isNaN(Number(ing.current_stock)) && ing.current_stock !== null) ? Number(ing.current_stock) : 0;
+        const rawCost = ing.cost_per_unit;
+        const costPerUnit = (!isNaN(Number(rawCost)) && rawCost !== null && rawCost !== undefined) ? Number(rawCost) : 0;
+        const unit = ing.unit || 'unit';
+        const isLow = currentStock <= minAlert;
+
+        return `
+          <tr>
+            <td style="font-weight:700;color:var(--text-heading);">${ing.name || 'Bahan Baku'}</td>
+            <td style="color:var(--text-muted);">${ing.category_name || '-'}</td>
+            <td style="font-weight:800; font-family:var(--font-heading); color: ${isLow ? 'var(--accent-red)' : 'var(--accent-green)'};">
+              ${currentStock.toLocaleString('id-ID')} ${unit}
+            </td>
+            <td style="color:var(--text-muted);">${minAlert.toLocaleString('id-ID')} ${unit}</td>
+            <td style="font-weight:600;">${api.formatRupiah(costPerUnit)} / ${unit}</td>
+            <td>
+              <span style="display:inline-block;padding:3px 10px;border-radius:var(--radius-full);font-size:0.76rem;font-weight:800;background:${isLow ? 'var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border);' : 'var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border);'}">
+                ${isLow ? '⚠️ Stok Menipis' : '✓ Stok Aman'}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
 
     // Load Items for Recipe Inspector
     const recipeSelect = document.getElementById('recipe-item-select');
-    recipeSelect.innerHTML = state.items.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
-    loadRecipeDetails();
+    if (recipeSelect) {
+      if (Array.isArray(state.items) && state.items.length > 0) {
+        recipeSelect.innerHTML = state.items.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+      } else {
+        recipeSelect.innerHTML = '<option value="">Pilih Menu</option>';
+      }
+      loadRecipeDetails();
+    }
 
   } catch (err) {
     console.error('Inventory error:', err);
@@ -1945,32 +1963,44 @@ async function loadInventory() {
 }
 
 async function loadRecipeDetails() {
-  const itemId = parseInt(document.getElementById('recipe-item-select').value);
+  const selectEl = document.getElementById('recipe-item-select');
   const container = document.getElementById('recipe-details-container');
-  if (!itemId) return;
+  if (!container) return;
+
+  const itemId = selectEl ? parseInt(selectEl.value) : null;
+  if (!itemId) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:0.88rem;padding:1rem 0;">Pilih menu untuk melihat resep racikan.</div>';
+    return;
+  }
 
   try {
     const recipes = await api.getRecipes(itemId);
-    if (recipes.length === 0) {
+    if (!recipes || !Array.isArray(recipes) || recipes.length === 0) {
       container.innerHTML = '<div style="color:var(--text-muted);font-size:0.88rem;padding:1rem 0;">Resep racikan belum dikonfigurasi untuk menu ini.</div>';
       return;
     }
 
     container.innerHTML = `
       <div style="display:flex;flex-direction:column;gap:0.65rem;">
-        ${recipes.map(r => `
+        ${recipes.map(r => {
+          const ingName = r.ingredient_name || r.name || 'Bahan Baku';
+          const rawQty = (r.quantity_used !== undefined && r.quantity_used !== null) ? r.quantity_used : r.quantity;
+          const qty = (!isNaN(Number(rawQty)) && rawQty !== null && rawQty !== undefined) ? Number(rawQty) : 0;
+          const unit = r.unit || 'porsi';
+          return `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 1rem;background:var(--bg-surface);border-radius:var(--radius-sm);border:1px solid var(--border-subtle);">
             <div style="display:flex;align-items:center;gap:0.6rem;">
               <span style="font-size:1.1rem;">🌿</span>
-              <span style="font-weight:600;">${r.ingredient_name}</span>
+              <span style="font-weight:600;color:var(--text-heading);">${ingName}</span>
             </div>
-            <span style="font-weight:800;color:var(--primary);font-family:var(--font-heading);font-size:0.95rem;">${r.quantity_used} ${r.unit} / porsi</span>
+            <span style="font-weight:800;color:var(--primary);font-family:var(--font-heading);font-size:0.95rem;">${qty.toLocaleString('id-ID')} ${unit} / porsi</span>
           </div>
-        `).join('')}
+        `}).join('')}
       </div>
     `;
   } catch (err) {
     console.error('Recipe load error:', err);
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:0.88rem;padding:1rem 0;">Resep racikan belum tersedia untuk menu ini.</div>';
   }
 }
 
