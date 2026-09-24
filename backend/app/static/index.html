@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=6.6" />
+  <link rel="stylesheet" href="/static/css/style.css?v=7.0" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍞</text></svg>">
 </head>
 <body>
@@ -206,10 +206,15 @@
         </div>
       </div>
 
+      <!-- Cashier Role Badge -->
+      <div class="sidebar-role-indicator cashier">
+        <span>👤 Akses Kasir POS</span>
+      </div>
+
       <!-- Nav Groups -->
       <nav class="sidebar-nav">
 
-        <div class="sidebar-section-label">MENU UTAMA</div>
+        <div class="sidebar-section-label" id="sidebar-label-ops">MENU UTAMA</div>
 
         <button class="sidebar-item active" data-target="view-pos" id="nav-btn-pos">
           <span class="sidebar-icon">
@@ -253,7 +258,13 @@
           <span class="sidebar-label">Absensi Karyawan</span>
         </button>
 
-        <div class="sidebar-section-label" style="margin-top:1.5rem;">MASTER DATA</div>
+        <!-- Container Custom Operasional -->
+        <div id="sidebar-custom-operasional"></div>
+
+        <div class="sidebar-section-label" id="sidebar-label-mgmt" style="margin-top:1.5rem;">MANAJEMEN</div>
+        <div id="sidebar-custom-manajemen"></div>
+
+        <div class="sidebar-section-label" id="sidebar-label-master" style="margin-top:1.5rem;">MASTER DATA</div>
 
         <!-- Master Data expandable -->
         <button class="sidebar-item" id="sidebar-master-toggle" onclick="toggleSidebarMaster()">
@@ -276,7 +287,7 @@
           <button class="sidebar-subitem" onclick="openMasterTab('jabatan')">🛡️ Jabatan &amp; Peran</button>
         </div>
 
-        <div class="sidebar-section-label" style="margin-top:1.5rem;">SISTEM</div>
+        <div class="sidebar-section-label" id="sidebar-label-sys" style="margin-top:1.5rem;">SISTEM</div>
 
         <button class="sidebar-item" data-target="view-settings" id="nav-btn-settings">
           <span class="sidebar-icon">
@@ -285,10 +296,16 @@
           <span class="sidebar-label">Pengaturan</span>
         </button>
 
+        <!-- Container Custom Sistem -->
+        <div id="sidebar-custom-sistem"></div>
+
       </nav>
 
       <!-- Sidebar Footer -->
       <div class="sidebar-footer">
+        <a href="/pos#dashboard" class="btn-switch-portal" title="Buka Portal Manajemen Superadmin">
+          <span>👑</span> Portal Superadmin
+        </a>
         <div class="sidebar-user-card" onclick="lockPOS()" title="Petugas Kasir Aktif (Klik untuk Kunci Layar)">
           <div class="sidebar-user-avatar" id="sidebar-user-initial">A</div>
           <div class="sidebar-user-details">
@@ -888,6 +905,9 @@
                 </button>
                 <button class="settings-sub-tab" data-sub="struk" onclick="openSettingsTab('struk')">
                   <span>🧾</span> Setting Struk
+                </button>
+                <button class="settings-sub-tab" data-sub="hakakses" onclick="openMenuPermissionsModal()">
+                  <span>🛡️</span> Hak Akses Menu
                 </button>
               </div>
             </div>
@@ -1559,12 +1579,145 @@
     </div>
   </div>
 
+  <!-- Modal: Hak Akses & Kelola Menu (Superadmin) -->
+  <div class="modal-backdrop" id="menu-permissions-modal">
+    <div class="modal-box" style="max-width:820px;max-height:90vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.5rem;">🛡️</span>
+          <div>
+            <h3 style="margin:0;font-size:1.18rem;font-weight:800;color:var(--text-heading);">Hak Akses &amp; Manajemen Menu</h3>
+            <p style="margin:2px 0 0;font-size:0.79rem;color:var(--text-muted);">Atur visibilitas menu kasir, tambahkan menu/link kustom baru, atau sembunyikan fitur</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeMenuPermissionsModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:1rem;overflow-y:auto;padding-right:6px;">
+        
+        <!-- Info Guidance Banner -->
+        <div style="padding:0.75rem 1rem;background:var(--primary-subtle);border:1px solid var(--border-medium);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div style="font-size:0.83rem;color:var(--text-main);">
+            <strong>Panduan:</strong> Hilangkan centang <em>"Tampil di Kasir"</em> untuk menyembunyikan menu dari kasir. Matikan <em>"Status Menu"</em> untuk menonaktifkan menu secara global. Anda juga dapat menambahkan menu atau tautan baru di bawah.
+          </div>
+          <button type="button" class="btn-primary-sm" onclick="resetDefaultMenuPermissions()" style="padding:4px 10px;font-size:0.75rem;cursor:pointer;background:var(--bg-surface);border:1px solid var(--border-medium);border-radius:var(--radius-xs);color:var(--text-main);font-weight:700;">↺ Reset Default</button>
+        </div>
+
+        <!-- Section: Tambah Menu Kustom Baru (Accordion / Collapsible Box) -->
+        <div style="background:var(--bg-card);border:1px solid var(--border-medium);border-radius:var(--radius-md);padding:0.9rem 1.1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleAddMenuBox()">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:1.15rem;">➕</span>
+              <strong style="font-size:0.92rem;color:var(--text-heading);">Tambah Menu / Modul Baru</strong>
+              <span style="font-size:0.75rem;padding:2px 8px;border-radius:10px;background:var(--primary-subtle);color:var(--primary);font-weight:700;">Fitur Superadmin</span>
+            </div>
+            <span id="add-menu-chevron" style="font-size:0.85rem;color:var(--text-muted);transition:transform 0.2s;">▼</span>
+          </div>
+
+          <div id="add-menu-form-container" style="display:none;margin-top:0.85rem;padding-top:0.85rem;border-top:1px dashed var(--border-medium);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">NAMA MENU *</label>
+                <input type="text" id="new-menu-label" class="form-input" placeholder="Contoh: GrabFood Merchant / Katalog Promo" style="width:100%;font-size:0.84rem;padding:0.45rem 0.65rem;">
+              </div>
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">ICON / EMOJI</label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <input type="text" id="new-menu-icon" class="form-input" value="⭐" style="width:52px;text-align:center;font-size:1.1rem;padding:0.35rem 0.2rem;">
+                  <div style="display:flex;gap:3px;flex-wrap:wrap;">
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('🛍️')">🛍️</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('📦')">📦</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('🛵')">🛵</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('📱')">📱</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('📊')">📊</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('💳')">💳</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('🏷️')">🏷️</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('🌐')">🌐</button>
+                    <button type="button" class="quick-emoji-btn" onclick="setNewMenuEmoji('🎁')">🎁</button>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">KATEGORI MENU</label>
+                <select id="new-menu-cat" class="form-select" style="width:100%;font-size:0.84rem;padding:0.45rem 0.65rem;">
+                  <option value="operasional">Operasional (Kasir / Meja / Transaksi)</option>
+                  <option value="manajemen">Manajemen (Laporan / Gudang / Analitik)</option>
+                  <option value="sistem">Sistem (Integrasi / Pengaturan / Alat)</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">TIPE AKSI</label>
+                <select id="new-menu-action" class="form-select" onchange="toggleNewMenuActionUI(this.value)" style="width:100%;font-size:0.84rem;padding:0.45rem 0.65rem;">
+                  <option value="url">Tautan Eksternal / Web Luar (URL)</option>
+                  <option value="view">Halaman / Tampilan Dalam (View ID)</option>
+                </select>
+              </div>
+              <div style="grid-column:1 / -1;">
+                <label id="new-menu-target-label" style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">URL TAUTAN (misal https://merchant.grab.com atau link spreadsheet)</label>
+                <input type="text" id="new-menu-target" class="form-input" placeholder="https://..." style="width:100%;font-size:0.84rem;padding:0.45rem 0.65rem;">
+              </div>
+              <div style="grid-column:1 / -1;">
+                <label style="display:block;font-size:0.76rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;">DESKRIPSI SINGKAT</label>
+                <input type="text" id="new-menu-desc" class="form-input" placeholder="Keterangan singkat fungsi menu ini..." style="width:100%;font-size:0.84rem;padding:0.45rem 0.65rem;">
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.85rem;padding-top:0.75rem;border-top:1px solid var(--border-subtle);flex-wrap:wrap;gap:0.75rem;">
+              <div style="display:flex;align-items:center;gap:1.5rem;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer;color:var(--text-main);">
+                  <input type="checkbox" id="new-menu-kasir" checked>
+                  <span>Tampilkan di Akses Kasir</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer;color:var(--text-main);">
+                  <input type="checkbox" id="new-menu-active" checked>
+                  <span>Status Aktif</span>
+                </label>
+              </div>
+              <button type="button" class="btn-primary" onclick="addNewCustomMenu()" style="padding:0.45rem 1.1rem;font-size:0.84rem;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;">
+                + Tambahkan Menu
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table of Menu Permissions -->
+        <div style="max-height:320px;overflow-y:auto;border:1px solid var(--border-subtle);border-radius:var(--radius-md);">
+          <table class="inventory-table" style="width:100%;font-size:0.84rem;border-collapse:collapse;">
+            <thead>
+              <tr style="background:var(--bg-input);border-bottom:1px solid var(--border-medium);text-align:left;position:sticky;top:0;z-index:2;">
+                <th style="padding:0.65rem 0.85rem;">Menu Aplikasi</th>
+                <th style="padding:0.65rem 0.85rem;">Kategori</th>
+                <th style="padding:0.65rem 0.85rem;text-align:center;">Tampil di Kasir</th>
+                <th style="padding:0.65rem 0.85rem;text-align:center;">Status Menu</th>
+                <th style="padding:0.65rem 0.85rem;text-align:center;">Aksi / Kelola</th>
+              </tr>
+            </thead>
+            <tbody id="menu-permissions-tbody">
+              <!-- Populated via JavaScript dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Bottom Actions -->
+        <div style="padding:0.85rem;background:var(--bg-card);border:1px dashed var(--border-medium);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">
+          <div style="font-size:0.82rem;color:var(--text-muted);">
+            💡 Perubahan langsung disinkronkan ke Kasir (<a href="/" target="_blank" style="color:var(--primary);font-weight:700;">http://127.0.0.1:8000/</a>) dan Superadmin (<a href="/pos#dashboard" target="_blank" style="color:var(--primary);font-weight:700;">http://127.0.0.1:8000/pos#dashboard</a>).
+          </div>
+          <button type="button" class="btn-save" onclick="saveMenuPermissionsFromModal()" style="padding:0.6rem 1.3rem;font-size:0.85rem;font-weight:700;background:var(--primary);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;">💾 Simpan Hak Akses Menu</button>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;">
+        <button type="button" class="btn-cancel" onclick="closeMenuPermissionsModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toast-container"></div>
 
   <!-- Scripts with Cache Busting -->
-  <script src="/static/js/api.js?v=6.9"></script>
-  <script src="/static/js/app.js?v=6.9"></script>
+  <script src="/static/js/api.js?v=7.0"></script>
+  <script src="/static/js/app.js?v=7.0"></script>
 
   <!-- Sidebar & Topbar Enhancement Script -->
   <script>

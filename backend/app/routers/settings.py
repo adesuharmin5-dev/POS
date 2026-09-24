@@ -259,3 +259,45 @@ async def upload_logo(file: UploadFile = File(...)):
         "image_url": f"/static/img/uploads/{unique_filename}",
         "filename": unique_filename
     }
+
+import json
+
+DEFAULT_MENU_PERMISSIONS = [
+    {"id": "view-pos", "label": "Kasir POS", "icon": "🛒", "kasir": True, "admin": True, "active": True, "category": "operasional", "description": "Terminal pencatatan pesanan & transaksi kasir"},
+    {"id": "view-tables", "label": "Denah Meja", "icon": "🪑", "kasir": True, "admin": True, "active": True, "category": "operasional", "description": "Denah meja visual interaktif & status dine-in"},
+    {"id": "view-shifts", "label": "Shift & Riwayat", "icon": "⏱️", "kasir": True, "admin": True, "active": True, "category": "operasional", "description": "Buka/tutup shift kasir dan riwayat transaksi"},
+    {"id": "view-attendance", "label": "Absensi Karyawan", "icon": "👥", "kasir": True, "admin": True, "active": True, "category": "operasional", "description": "Pencatatan absensi masuk dan pulang staf"},
+    {"id": "link-online", "label": "Katalog Web Online", "icon": "🌐", "kasir": True, "admin": True, "active": True, "category": "operasional", "description": "Halaman web pemesanan mandiri pelanggan"},
+    {"id": "view-dashboard", "label": "Dashboard Analitik", "icon": "📊", "kasir": False, "admin": True, "active": True, "category": "manajemen", "description": "Metrik penjualan, laba kotor, dan grafik tren omzet"},
+    {"id": "view-reports", "label": "Laporan Keuangan & HPP", "icon": "📈", "kasir": False, "admin": True, "active": True, "category": "manajemen", "description": "Laporan penjualan harian, bulanan, keuntungan & modal"},
+    {"id": "view-inventory", "label": "Stok & Resep Gudang", "icon": "📦", "kasir": False, "admin": True, "active": True, "category": "manajemen", "description": "Inventori bahan baku & resep Bill of Materials"},
+    {"id": "modal-customers", "label": "Pelanggan & Member", "icon": "⭐", "kasir": False, "admin": True, "active": True, "category": "manajemen", "description": "Daftar pelanggan setia dan poin loyalty"},
+    {"id": "view-master", "label": "Master Data Toko", "icon": "📁", "kasir": False, "admin": True, "active": True, "category": "sistem", "description": "Kelola kategori, menu, harga, ukuran, gula, topping"},
+    {"id": "modal-partners", "label": "Solusi Mitra POS", "icon": "🚀", "kasir": False, "admin": True, "active": True, "category": "sistem", "description": "Integrasi hardware printer & WhatsApp order"},
+    {"id": "view-settings", "label": "Pengaturan Sistem", "icon": "⚙️", "kasir": False, "admin": True, "active": True, "category": "sistem", "description": "Konfigurasi toko, pajak, printer, struk, dan hak akses"}
+]
+
+@router.get("/menu-permissions")
+def get_menu_permissions(outlet_id: int = 1, db: sqlite3.Connection = Depends(get_db)):
+    cursor = db.cursor()
+    cursor.execute("SELECT setting_value FROM settings WHERE outlet_id = ? AND setting_key = 'menu_permissions'", (outlet_id,))
+    row = cursor.fetchone()
+    if row and row["setting_value"]:
+        try:
+            return json.loads(row["setting_value"])
+        except Exception:
+            pass
+    return DEFAULT_MENU_PERMISSIONS
+
+@router.put("/menu-permissions")
+def save_menu_permissions(data: dict, outlet_id: int = 1, db: sqlite3.Connection = Depends(get_db)):
+    cursor = db.cursor()
+    permissions_list = data.get("menus", DEFAULT_MENU_PERMISSIONS)
+    payload_str = json.dumps(permissions_list, ensure_ascii=False)
+    cursor.execute("""
+        INSERT INTO settings (outlet_id, setting_key, setting_value, description)
+        VALUES (?, 'menu_permissions', ?, 'Hak akses dan visibilitas menu kasir & superadmin')
+        ON CONFLICT(outlet_id, setting_key) DO UPDATE SET setting_value = excluded.setting_value
+    """, (outlet_id, payload_str))
+    db.commit()
+    return {"success": True, "message": "Hak akses menu berhasil diperbarui", "menus": permissions_list}

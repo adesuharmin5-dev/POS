@@ -5082,327 +5082,148 @@ input, select, textarea {
 }
 
 /* ============================================================
-   MOKA POS BACKOFFICE THEME & DASHBOARD SYSTEM
-   Strict Anti-Slop: Solid clean surfaces, WCAG AAA contrast,
-   No cliche AI gradients, No glowing neon borders.
+   TERAS MANIS: ROLE-BASED ACCESS & MENU PERMISSIONS SYSTEM
+   Clean Airy Slate Theme (WCAG AAA, High Contrast, Anti-Slop)
    ============================================================ */
 
-/* --- 1. Moka Sidebar (Dark Slate / Deep Navy Theme) --- */
-.moka-sidebar {
-  background: #182232 !important;
-  border-right: 1px solid #101724 !important;
-  color: #94a3b8;
-  width: var(--sidebar-width);
-}
-
-.moka-sidebar .sidebar-brand-moka {
-  padding: 1.25rem 1.25rem 0.85rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.moka-logo-wrap {
+/* Role Badges & Indicators */
+.sidebar-role-indicator {
   display: flex;
   align-items: center;
-}
-
-.moka-logo-word {
-  font-size: 1.65rem;
+  justify-content: center;
+  gap: 6px;
+  margin: 0.6rem 0.85rem 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.74rem;
   font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -0.04em;
-  font-family: var(--font-heading);
-}
-
-/* User profile button in sidebar */
-.sidebar-profile-box {
-  position: relative;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.sidebar-profile-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #101724;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 0.6rem 0.85rem;
-  color: #f1f5f9;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.sidebar-profile-btn:hover {
-  background: #1e293b;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-.profile-username {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-chevron {
-  display: inline-flex;
-  align-items: center;
-  color: #94a3b8;
-}
-
-/* Profile dropdown */
-.profile-dropdown-menu {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 1rem;
-  right: 1rem;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  padding: 0.5rem 0;
-  margin-top: 4px;
-}
-
-.profile-dropdown-menu.show {
-  display: block;
-}
-
-.dropdown-user-header {
-  padding: 0.65rem 0.9rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.dropdown-user-header strong {
-  color: #ffffff;
-  font-size: 0.88rem;
-}
-
-.dropdown-user-header span {
-  color: #94a3b8;
-  font-size: 0.75rem;
-}
-
-.dropdown-menu-sep {
-  height: 1px;
-  background: #334155;
-  margin: 0.4rem 0;
-}
-
-.dropdown-menu-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.9rem;
-  background: transparent;
-  border: none;
-  color: #cbd5e1;
-  font-size: 0.82rem;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.dropdown-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-}
-
-.dropdown-menu-item.danger {
-  color: #f87171;
-}
-
-.dropdown-menu-item.danger:hover {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-}
-
-/* Moka nav list */
-.moka-nav {
-  padding: 0.85rem 0.5rem;
-  gap: 3px;
-}
-
-.moka-nav .sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 6px;
-  color: #94a3b8 !important;
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  text-decoration: none;
-  transition: var(--transition);
 }
 
-.moka-nav .sidebar-item:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #ffffff !important;
+.sidebar-role-indicator.admin {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--border-medium);
 }
 
-.moka-nav .sidebar-item.active {
-  background: #0284c7 !important;
-  color: #ffffff !important;
-  font-weight: 800;
+.sidebar-role-indicator.cashier {
+  background: var(--accent-green-bg);
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green-border);
 }
 
-.sidebar-arrow {
-  font-size: 1.15rem;
-  line-height: 1;
-  font-weight: 700;
-  opacity: 0.6;
-}
-
-.moka-nav .sidebar-item.active .sidebar-arrow {
-  opacity: 1;
-}
-
-/* Badges */
-.pill-badge-new {
-  margin-left: auto;
-  background: #f59e0b;
-  color: #000000;
-  font-size: 0.62rem;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.02em;
-}
-
-.dot-badge-red {
-  margin-left: auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
-}
-
-.ext-link-icon {
-  margin-left: auto;
-  font-size: 0.75rem;
-  opacity: 0.6;
-}
-
-/* Sidebar bottom Moka */
-.sidebar-bottom-moka {
-  margin-top: auto;
-  padding: 1rem 0.85rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-}
-
-.moka-call-center {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: #94a3b8;
-  font-size: 0.86rem;
-  font-weight: 700;
-  text-decoration: none;
-  padding: 0.3rem 0.4rem;
-  transition: var(--transition);
-}
-
-.moka-call-center:hover {
-  color: #ffffff;
-}
-
-.btn-moka-help {
+/* Switch Portal Button */
+.btn-switch-portal {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.55rem 0.75rem;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  color: #cbd5e1;
-  font-size: 0.8rem;
-  font-weight: 600;
+  width: 100%;
+  padding: 0.5rem 0.85rem;
+  margin-bottom: 0.55rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: 0.79rem;
+  font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
   transition: var(--transition);
 }
 
-.btn-moka-help:hover {
-  background: rgba(255, 255, 255, 0.08);
+.btn-switch-portal:hover {
+  background: var(--primary);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--primary);
 }
 
-.help-circle-icon {
+/* Menu Permission Switch & Checkbox */
+.menu-perm-toggle {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid currentColor;
-  font-size: 0.7rem;
-  font-weight: 700;
-}
-
-/* --- 2. Trial Notification Banner --- */
-.moka-trial-banner {
-  background: #fffbeb;
-  border-bottom: 1px solid #fde68a;
-  color: #92400e;
-  padding: 0.65rem 1.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  font-size: 0.86rem;
-}
-
-.trial-banner-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.trial-banner-text strong {
-  color: #b45309;
-  font-weight: 700;
-}
-
-.btn-trial-subscribe {
-  background: #ffffff;
-  border: 1px solid #0284c7;
-  color: #0284c7;
-  padding: 0.35rem 0.85rem;
-  border-radius: 5px;
-  font-size: 0.8rem;
-  font-weight: 700;
   cursor: pointer;
-  transition: var(--transition);
+  user-select: none;
 }
 
-.btn-trial-subscribe:hover {
-  background: #f0f9ff;
-  border-color: #0369a1;
-  color: #0369a1;
+.menu-perm-toggle input {
+  display: none;
 }
 
-/* --- 3. Modern Analytics Dashboard Wrapper --- */
-.moka-dash-wrapper {
+.menu-perm-slider {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: #cbd5e1;
+  border-radius: 20px;
+  transition: 0.2s;
+  display: inline-block;
+}
+
+.menu-perm-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.menu-perm-toggle input:checked + .menu-perm-slider {
+  background: var(--primary);
+}
+
+.menu-perm-toggle input:checked + .menu-perm-slider:before {
+  transform: translateX(16px);
+}
+
+/* Category Badge in Permission Table */
+.perm-cat-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.perm-cat-pill.operasional { background: var(--accent-green-bg); color: var(--accent-green); }
+.perm-cat-pill.manajemen   { background: var(--primary-light); color: var(--primary); }
+.perm-cat-pill.sistem      { background: var(--accent-purple-bg); color: var(--accent-purple); }
+
+/* Quick emoji button in menu permissions */
+.quick-emoji-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1.2;
+  transition: transform 0.1s, background 0.15s;
+}
+.quick-emoji-btn:hover {
+  background: var(--bg-card-hover);
+  transform: scale(1.15);
+}
+.custom-nav-item {
+  position: relative;
+}
+
+/* Defensively suppress any legacy or cached trial banners or modals */
+#moka-trial-banner, .moka-trial-banner, #subscribe-modal {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Analytics Dashboard Wrapper */
+.dash-wrapper, .moka-dash-wrapper {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -5662,8 +5483,8 @@ input, select, textarea {
   flex-direction: column;
 }
 
-/* Empty state matching Moka screenshot */
-.moka-empty-state {
+/* Empty state dashboard */
+.dash-empty-state, .moka-empty-state {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5672,7 +5493,7 @@ input, select, textarea {
   width: 100%;
 }
 
-.moka-empty-state p {
+.dash-empty-state p, .moka-empty-state p {
   color: #64748b;
   font-size: 0.88rem;
   font-weight: 500;
@@ -5786,3 +5607,214 @@ input, select, textarea {
 
 
 
+
+/* ==========================================================================
+   REPORTS / LAPORAN MODULE
+   ========================================================================== */
+
+/* Tab Navigation */
+.report-tab-nav {
+  display: flex;
+  border-bottom: 2px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.report-tab-nav::-webkit-scrollbar { display: none; }
+
+.report-tab-btn {
+  flex-shrink: 0;
+  padding: 0.9rem 1.4rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s;
+  white-space: nowrap;
+}
+.report-tab-btn:hover { color: var(--text-heading); }
+.report-tab-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* Tab Panels */
+.report-tab-panel {
+  display: none;
+  padding: 1.5rem;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+.report-tab-panel.active { display: flex; }
+
+/* Filter Bar */
+.report-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 0.4rem;
+}
+.report-filter-label {
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.report-date-input {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-heading);
+  font-size: 0.83rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.report-date-input:focus { border-color: var(--primary); }
+.report-btn-primary {
+  padding: 0.48rem 1.1rem;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.report-btn-primary:hover { background: #0369a1; }
+
+/* KPI Grid */
+.report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.8rem;
+}
+.report-kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.1rem;
+}
+.report-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+.report-kpi-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: var(--font-heading);
+  color: var(--text-heading);
+}
+.report-kpi-value.green { color: var(--accent-green); }
+.report-kpi-value.red   { color: var(--accent-red); }
+.report-kpi-value.muted { color: var(--text-muted); }
+
+/* Split Grid (2 columns) */
+.report-split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+}
+@media (max-width: 720px) {
+  .report-split-grid { grid-template-columns: 1fr; }
+  .report-kpi-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Section Titles */
+.report-section-title {
+  font-size: 0.79rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+/* Report Table */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+.report-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.report-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-body);
+  font-weight: 500;
+}
+.report-table tbody tr:last-child td { border-bottom: none; }
+.report-table tbody tr:hover { background: var(--bg-elevated); }
+.report-table td.num { font-family: var(--font-heading); font-weight: 700; }
+.report-table td.green { color: var(--accent-green); font-weight: 700; }
+.report-table td.red   { color: var(--accent-red);   font-weight: 700; }
+.report-table td.muted { color: var(--text-muted); }
+
+/* Profit Summary Banner */
+.profit-summary-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 0.2rem;
+}
+.profit-banner-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1rem 1.4rem;
+  flex: 1;
+  min-width: 140px;
+}
+.profit-banner-sep {
+  width: 1px;
+  background: var(--border-subtle);
+  align-self: stretch;
+}
+.profit-banner-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.profit-banner-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: var(--font-heading);
+  color: var(--text-heading);
+}
+.profit-banner-value.green { color: var(--accent-green); }
+.profit-banner-value.muted { color: var(--text-muted); }
+
+/* Badge helpers for stock status */
+.badge-low   { display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:var(--accent-red-bg);color:var(--accent-red);border:1px solid var(--accent-red-border); }
+.badge-ok    { display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:var(--accent-green-bg);color:var(--accent-green);border:1px solid var(--accent-green-border); }
+.badge-warn  { display:inline-block;padding:2px 8px;border-radius:var(--radius-full);font-size:0.72rem;font-weight:700;background:rgba(245,158,11,0.12);color:#d97706;border:1px solid rgba(245,158,11,0.3); }

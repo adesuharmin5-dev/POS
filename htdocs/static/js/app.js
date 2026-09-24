@@ -108,7 +108,21 @@ function getSavedSubTabForView(viewId) {
   return null;
 }
 
+function isCurrentSuperadminPortal() {
+  const isPosPath = window.location.pathname.includes('/pos');
+  const isDashboardHash = window.location.hash.includes('dashboard');
+  if (state.accountUser) {
+    const roleId = Number(state.accountUser.role_id);
+    const roleName = String(state.accountUser.role || '').toLowerCase();
+    if (roleId === 1 || roleName.includes('owner') || roleName.includes('admin') || roleName.includes('superadmin')) {
+      return true;
+    }
+  }
+  return isPosPath || isDashboardHash;
+}
+
 function parseRouteFromHashOrStorage() {
+  const isSuperadmin = isCurrentSuperadminPortal();
   const rawHash = (window.location.hash || '').replace(/^#\/?/, '').trim();
   if (rawHash) {
     const parts = rawHash.split(/[\/:]/);
@@ -117,11 +131,20 @@ function parseRouteFromHashOrStorage() {
 
     if (HASH_TO_VIEW[mainKey]) {
       const vId = HASH_TO_VIEW[mainKey];
+      // Jika mode kasir dan mencoba buka dashboard/master/settings, arahkan ke pos
+      if (!isSuperadmin && (vId === 'view-dashboard' || vId === 'view-master' || vId === 'view-settings')) {
+        return { viewId: 'view-pos', subTab: null };
+      }
       return {
         viewId: vId,
         subTab: subTab || getSavedSubTabForView(vId)
       };
     }
+  }
+
+  // Jika di portal kasir (/), default ke view-pos
+  if (!isSuperadmin) {
+    return { viewId: 'view-pos', subTab: null };
   }
 
   const savedView = sessionStorage.getItem('aurora_current_view') || localStorage.getItem('aurora_last_view');
@@ -134,6 +157,7 @@ function parseRouteFromHashOrStorage() {
 
   return { viewId: 'view-dashboard', subTab: null };
 }
+
 
 function applyViewUI(viewId, subTab = null) {
   if (!viewId) return;
@@ -177,9 +201,16 @@ function applyViewUI(viewId, subTab = null) {
 
 // Initialize App
 document.addEventListener('DOMContentLoaded', async () => {
+  // Proactively remove any lingering legacy/cached trial banner elements
+  const legacyTrial = document.getElementById('moka-trial-banner') || document.querySelector('.moka-trial-banner');
+  if (legacyTrial) legacyTrial.remove();
+  const legacySubModal = document.getElementById('subscribe-modal');
+  if (legacySubModal) legacySubModal.remove();
+
   initTheme();
   setupNavigation();
   setupEventListeners();
+  await initMenuPermissions();
 
   const isAccountLoggedIn = checkAccountSession();
 
@@ -388,8 +419,14 @@ async function handleLandingLogin(e) {
         overlay.classList.add('hidden');
       }
 
-      // Pastikan view Kasir POS aktif
-      navigateToView('view-pos', null, true);
+      await initMenuPermissions();
+      applyMenuPermissionsUI();
+
+      if (isCurrentSuperadminPortal()) {
+        navigateToView('view-dashboard', null, true);
+      } else {
+        navigateToView('view-pos', null, true);
+      }
 
       api.showToast(`Login berhasil! Selamat datang, ${res.user.name}`, 'success');
     } else {
@@ -802,6 +839,22 @@ function navigateToView(targetId, subTab = null, updateHash = true, forceLoad = 
   const viewId = targetId.startsWith('view-') ? targetId : `view-${targetId}`;
   if (!VIEW_ROUTES[viewId]) return;
 
+  const isSuperadmin = isCurrentSuperadminPortal();
+  if (!isSuperadmin) {
+    const menuMap = {};
+    if (typeof currentMenuPermissions !== 'undefined' && Array.isArray(currentMenuPermissions)) {
+      currentMenuPermissions.forEach(m => { menuMap[m.id] = m; });
+      const perm = menuMap[viewId];
+      if (perm && (perm.kasir === false || perm.active === false)) {
+        api.showToast('Fitur ini hanya dapat diakses melalui portal Superadmin.', 'info');
+        if (state.activeView !== 'view-pos') {
+          navigateToView('view-pos', null, true);
+        }
+        return;
+      }
+    }
+  }
+
   // Apply UI active classes immediately
   applyViewUI(viewId, subTab);
 
@@ -854,6 +907,17 @@ function loadViewData(viewId, subTab = null, forceLoad = false) {
     loadInventory();
   } else if (viewId === 'view-shifts') {
     loadShiftsAndHistory();
+    // Auto-init report tab: set today's date and load daily report
+    const dailyDateEl = document.getElementById('rpt-daily-date');
+    if (dailyDateEl && !dailyDateEl.value) {
+      dailyDateEl.value = new Date().toISOString().slice(0, 10);
+    }
+    const now = new Date();
+    const monthEl = document.getElementById('rpt-month-month');
+    const yearEl  = document.getElementById('rpt-month-year');
+    if (monthEl && !monthEl.value) monthEl.value = now.getMonth() + 1;
+    if (yearEl  && !yearEl.value)  yearEl.value  = now.getFullYear();
+    loadDailyReport();
   } else if (viewId === 'view-attendance') {
     loadAttendance().then(() => {
       const tab = subTab || state.activeAttendanceTab || sessionStorage.getItem('aurora_attendance_subtab') || 'cards';
@@ -965,9 +1029,12 @@ function populateTableSelector(tables) {
   const select = document.getElementById('pos-table-select');
   if (!select) return;
   select.innerHTML = '<option value="">-- Pilih Meja / Pesanan Langsung --</option>';
-  tables.forEach(t => {
+  (tables || []).forEach(t => {
+    const rawNum = (t.table_number !== null && t.table_number !== undefined && t.table_number !== '' && t.table_number !== 'undefined') ? t.table_number : (t.table_no || t.id || '1');
+    const tableNumber = String(rawNum).padStart(2, '0');
     const isOccupied = t.status === 'occupied' ? ' 🔴 (Terisi)' : ' 🟢 (Kosong)';
-    select.innerHTML += `<option value="${t.id}">${t.table_number}${isOccupied} (${t.capacity} org)</option>`;
+    const cap = t.capacity || 4;
+    select.innerHTML += `<option value="${t.id}">Meja ${tableNumber}${isOccupied} (${cap} org)</option>`;
   });
 }
 
@@ -1029,7 +1096,7 @@ function renderProducts(items) {
     const price = (rawPrice !== null && rawPrice !== undefined && rawPrice !== '' && !isNaN(Number(rawPrice))) ? Number(rawPrice) : 0;
     const itemName = (item.name !== null && item.name !== undefined && item.name !== '' && item.name !== 'undefined' && item.name !== 'NaN') ? item.name : '0';
     const catName = (item.category_name !== null && item.category_name !== undefined && item.category_name !== '' && item.category_name !== 'undefined' && item.category_name !== 'NaN') ? item.category_name : '0';
-    const desc = item.description || 'Racikan istimewa biji kopi pilihan dengan cita rasa khas Aurora.';
+    const desc = item.description || 'Racikan istimewa kopi dan sajian lezat khas Teras Manis.';
     const img = item.image_url || '/static/img/coffee.jpg';
 
     return `
@@ -1335,10 +1402,10 @@ function applyPromoCode() {
     return;
   }
 
-  if (code === 'AURORAPAS' || code === 'HEMAT10' || code === 'KOPIENAK') {
+  if (code === 'TERASPAS' || code === 'HEMAT10' || code === 'KOPIENAK' || code === 'AURORAPAS') {
     state.appliedPromo = { code, discount_amount: 10000 };
     api.showToast(`Voucher ${code} aktif! Diskon Rp 10.000 diterapkan.`, 'success');
-  } else if (code === 'AURORA20' || code === 'DISCOUNT20') {
+  } else if (code === 'TERAS20' || code === 'DISCOUNT20' || code === 'AURORA20') {
     state.appliedPromo = { code, discount_amount: 20000 };
     api.showToast(`Voucher ${code} aktif! Diskon Rp 20.000 diterapkan.`, 'success');
   } else {
@@ -1553,8 +1620,8 @@ async function loadQRISDisplay() {
   const total = parseFloat(document.getElementById('pay-modal-total').getAttribute('data-amount'));
   try {
     const qris = await api.generateQRIS({ outlet_id: state.activeOutletId, amount: total });
-    document.getElementById('qris-ref-text').innerText = `Ref: ${qris.transaction_reference || 'QRIS-AURORA-2026'}`;
-    document.getElementById('qris-payload-preview').innerText = qris.qr_string || '00020101021226590014ID.LINKAJA.WWW01189360091100000000005204581253033605802ID5914AURORA COFFEE6007BANDUNG6304';
+    document.getElementById('qris-ref-text').innerText = `Ref: ${qris.transaction_reference || 'QRIS-TERAS-2026'}`;
+    document.getElementById('qris-payload-preview').innerText = qris.qr_string || '00020101021226590014ID.LINKAJA.WWW01189360091100000000005204581253033605802ID5911TERAS MANIS6007BANDUNG6304';
   } catch (err) {
     console.error('QRIS error:', err);
   }
@@ -1622,7 +1689,7 @@ function showReceiptModal(trx) {
   const content = document.getElementById('receipt-content');
 
   const rs = state.receiptSettings || {};
-  const brandName = rs.receipt_header || (state.brand && state.brand.name) || 'AURORA CAFE & ROASTERY';
+  const brandName = rs.receipt_header || (state.brand && state.brand.name) || 'TERAS MANIS';
   const outletAddr = (state.outlet && state.outlet.address) ? state.outlet.address : 'Jl. R.E. Martadinata No. 45, Bandung';
   const outletPhone = (state.outlet && state.outlet.phone) ? state.outlet.phone : '022-7201234';
   const taxId = rs.tax_id || '01.892.481.0-421.000';
@@ -1699,7 +1766,7 @@ function closeReceiptModal() {
 }
 
 // ==========================================================================
-// Dashboard Loader (Modern B2B Analytics ala Moka POS Backoffice)
+// Dashboard Loader (Modern B2B Analytics Backoffice Teras Manis)
 // ==========================================================================
 async function loadDashboard() {
   try {
@@ -1804,7 +1871,7 @@ function renderDashboardCategoriesVolume(catVolume) {
   const items = Array.isArray(catVolume) ? catVolume.filter(c => Number(c.total_volume ?? c.volume ?? 0) > 0) : [];
   if (items.length === 0) {
     container.innerHTML = `
-      <div class="moka-empty-state">
+      <div class="dash-empty-state">
         <p>Tidak ada data</p>
       </div>
     `;
@@ -1842,7 +1909,7 @@ function renderDashboardCategoriesSales(catSales) {
   const items = Array.isArray(catSales) ? catSales.filter(c => Number(c.total_sales ?? c.sales ?? 0) > 0) : [];
   if (items.length === 0) {
     container.innerHTML = `
-      <div class="moka-empty-state">
+      <div class="dash-empty-state">
         <p>Tidak ada data</p>
       </div>
     `;
@@ -1907,7 +1974,7 @@ function renderDashboardTopItems(data) {
 
   if (filtered.length === 0) {
     container.innerHTML = `
-      <div class="moka-empty-state">
+      <div class="dash-empty-state">
         <p>Tidak ada data</p>
       </div>
     `;
@@ -1954,24 +2021,385 @@ function renderDashboardTopItems(data) {
 }
 
 // ==========================================================================
-// Moka Backoffice Modal & Navigation Actions
+// Hak Akses & Manajemen Visibilitas Menu (Kasir & Superadmin)
 // ==========================================================================
+const DEFAULT_MENU_PERMISSIONS = [
+  { id: 'view-pos', label: 'Kasir POS', icon: '🛒', kasir: true, admin: true, active: true, category: 'operasional', description: 'Terminal pencatatan pesanan & transaksi kasir', isCustom: false },
+  { id: 'view-tables', label: 'Denah Meja', icon: '🪑', kasir: true, admin: true, active: true, category: 'operasional', description: 'Denah meja visual interaktif & status meja', isCustom: false },
+  { id: 'view-shifts', label: 'Shift & Riwayat', icon: '⏱️', kasir: true, admin: true, active: true, category: 'operasional', description: 'Buka/tutup shift kasir & riwayat transaksi', isCustom: false },
+  { id: 'view-attendance', label: 'Absensi Karyawan', icon: '👥', kasir: true, admin: true, active: true, category: 'operasional', description: 'Pencatatan absensi masuk & pulang staf', isCustom: false },
+  { id: 'link-online', label: 'Katalog Web Online', icon: '🌐', kasir: true, admin: true, active: true, category: 'operasional', description: 'Halaman web pemesanan mandiri pelanggan', isCustom: false },
+  { id: 'view-dashboard', label: 'Dashboard Analitik', icon: '📊', kasir: false, admin: true, active: true, category: 'manajemen', description: 'Metrik penjualan, laba kotor, dan grafik omzet', isCustom: false },
+  { id: 'view-reports', label: 'Laporan Lengkap & HPP', icon: '📈', kasir: false, admin: true, active: true, category: 'manajemen', description: 'Laporan harian, bulanan, keuntungan & modal stok', isCustom: false },
+  { id: 'view-inventory', label: 'Stok & Resep Gudang', icon: '📦', kasir: false, admin: true, active: true, category: 'manajemen', description: 'Inventori bahan baku & resep Bill of Materials', isCustom: false },
+  { id: 'modal-customers', label: 'Pelanggan & Member', icon: '⭐', kasir: false, admin: true, active: true, category: 'manajemen', description: 'Daftar pelanggan setia dan poin loyalty', isCustom: false },
+  { id: 'view-master', label: 'Master Data Toko', icon: '📁', kasir: false, admin: true, active: true, category: 'sistem', description: 'Kategori, menu, harga, ukuran, gula, topping', isCustom: false },
+  { id: 'modal-partners', label: 'Solusi Mitra POS', icon: '🚀', kasir: false, admin: true, active: true, category: 'sistem', description: 'Integrasi printer thermal & WhatsApp gateway', isCustom: false },
+  { id: 'view-settings', label: 'Pengaturan Sistem', icon: '⚙️', kasir: false, admin: true, active: true, category: 'sistem', description: 'Konfigurasi toko, pajak, printer, struk, dan hak akses', isCustom: false }
+];
+
+let currentMenuPermissions = JSON.parse(JSON.stringify(DEFAULT_MENU_PERMISSIONS));
+
+async function initMenuPermissions() {
+  try {
+    const local = localStorage.getItem('teras_menu_permissions');
+    if (local) {
+      currentMenuPermissions = JSON.parse(local);
+    } else {
+      const serverPerms = await api.getMenuPermissions();
+      if (Array.isArray(serverPerms) && serverPerms.length > 0) {
+        currentMenuPermissions = serverPerms;
+        localStorage.setItem('teras_menu_permissions', JSON.stringify(serverPerms));
+      }
+    }
+  } catch (e) {
+    console.warn('Gagal inisialisasi hak akses menu:', e);
+  }
+  applyMenuPermissionsUI();
+}
+
+function applyMenuPermissionsUI() {
+  const isSuperadmin = isCurrentSuperadminPortal();
+
+  // Update role indicators in sidebar
+  const roleBadges = document.querySelectorAll('.sidebar-role-indicator');
+  roleBadges.forEach(badge => {
+    if (isSuperadmin) {
+      badge.className = 'sidebar-role-indicator admin';
+      badge.innerHTML = '<span>👑 Akses Superadmin</span>';
+    } else {
+      badge.className = 'sidebar-role-indicator cashier';
+      badge.innerHTML = '<span>👤 Akses Kasir POS</span>';
+    }
+  });
+
+  const menuMap = {};
+  currentMenuPermissions.forEach(m => { menuMap[m.id] = m; });
+
+  const mapping = {
+    'view-pos': ['nav-btn-pos'],
+    'view-tables': ['nav-btn-tables'],
+    'view-shifts': ['nav-btn-shifts'],
+    'view-attendance': ['nav-btn-attendance'],
+    'link-online': ['nav-btn-online'],
+    'view-dashboard': ['nav-btn-dashboard'],
+    'view-reports': ['nav-btn-reports'],
+    'view-inventory': ['nav-btn-inventory', 'nav-btn-ingredient'],
+    'modal-customers': ['nav-btn-customers'],
+    'view-master': ['sidebar-master-toggle', 'sidebar-master-sub', 'nav-btn-master'],
+    'modal-partners': ['nav-btn-partners'],
+    'view-settings': ['nav-btn-settings', 'nav-btn-payments']
+  };
+
+  Object.keys(mapping).forEach(menuId => {
+    const perm = menuMap[menuId] || { active: true, kasir: true, admin: true };
+    const btnIds = mapping[menuId];
+    
+    let shouldShow = true;
+    if (perm.active === false) {
+      shouldShow = false;
+    } else if (!isSuperadmin && perm.kasir === false) {
+      shouldShow = false;
+    }
+
+    btnIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.style.display = shouldShow ? '' : 'none';
+      }
+    });
+  });
+
+  // Render dynamic custom menus
+  const customOps = document.getElementById('sidebar-custom-operasional');
+  const customMgmt = document.getElementById('sidebar-custom-manajemen');
+  const customSys = document.getElementById('sidebar-custom-sistem');
+
+  const customContainers = {
+    operasional: customOps,
+    manajemen: customMgmt,
+    sistem: customSys
+  };
+
+  Object.values(customContainers).forEach(c => {
+    if (c) c.innerHTML = '';
+  });
+
+  currentMenuPermissions.filter(m => m.isCustom).forEach(m => {
+    if (m.active === false) return;
+    if (!isSuperadmin && m.kasir === false) return;
+
+    const cat = m.category || 'operasional';
+    const targetContainer = customContainers[cat] || customOps;
+    if (!targetContainer) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'sidebar-item custom-nav-item';
+    btn.title = m.description || m.label;
+    btn.innerHTML = `
+      <span class="sidebar-icon">${m.icon || '📌'}</span>
+      <span class="sidebar-label" style="font-weight:600;">${m.label}</span>
+      ${m.actionType === 'url' ? '<span style="font-size:0.75rem;margin-left:auto;opacity:0.6;">↗</span>' : ''}
+    `;
+    btn.onclick = () => handleCustomMenuClick(m.id);
+    targetContainer.appendChild(btn);
+  });
+
+  // Hide empty section headers in Kasir mode
+  const labelMaster = document.getElementById('sidebar-label-master');
+  if (labelMaster) {
+    const masterPerm = menuMap['view-master'];
+    const showMaster = isSuperadmin || (masterPerm && masterPerm.active !== false && masterPerm.kasir === true);
+    labelMaster.style.display = showMaster ? '' : 'none';
+  }
+
+  const labelMgmt = document.getElementById('sidebar-label-mgmt');
+  if (labelMgmt) {
+    const showMgmt = isSuperadmin || (customMgmt && customMgmt.children.length > 0) || (menuMap['view-dashboard']?.kasir || menuMap['view-reports']?.kasir || menuMap['view-inventory']?.kasir);
+    labelMgmt.style.display = showMgmt ? '' : 'none';
+  }
+
+  const labelSys = document.getElementById('sidebar-label-sys');
+  if (labelSys) {
+    const sysPerm = menuMap['view-settings'];
+    const showSys = isSuperadmin || (customSys && customSys.children.length > 0) || (sysPerm && sysPerm.active !== false && sysPerm.kasir === true);
+    labelSys.style.display = showSys ? '' : 'none';
+  }
+
+  // If in cashier mode, prevent opening admin-only views
+  if (!isSuperadmin) {
+    const currentActive = document.querySelector('.view-section.active');
+    if (currentActive) {
+      const activeId = currentActive.id;
+      const perm = menuMap[activeId];
+      if (perm && (perm.active === false || perm.kasir === false)) {
+        navigateToView('view-pos', null, true);
+      }
+    }
+  }
+}
+
+function openMenuPermissionsModal() {
+  const modal = document.getElementById('menu-permissions-modal');
+  if (!modal) return;
+  modal.classList.add('active');
+  renderMenuPermissionsTable();
+}
+
+function closeMenuPermissionsModal() {
+  const modal = document.getElementById('menu-permissions-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+function renderMenuPermissionsTable() {
+  const tbody = document.getElementById('menu-permissions-tbody');
+  if (!tbody) return;
+
+  tbody.innerHTML = currentMenuPermissions.map((menu, idx) => {
+    const isKasirChecked = menu.kasir !== false;
+    const isActiveChecked = menu.active !== false;
+    const catClass = menu.category || 'operasional';
+    const catName = catClass.charAt(0).toUpperCase() + catClass.slice(1);
+    const isCustom = Boolean(menu.isCustom);
+
+    return `
+      <tr style="border-bottom:1px solid var(--border-subtle);transition:background 0.15s;" onmouseover="this.style.background='var(--bg-card-hover)'" onmouseout="this.style.background=''">
+        <td style="padding:0.75rem 0.85rem;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:1.25rem;">${menu.icon || '📌'}</span>
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong style="color:var(--text-heading);font-size:0.86rem;">${menu.label}</strong>
+                ${isCustom ? '<span style="font-size:0.68rem;padding:1px 6px;border-radius:4px;background:var(--accent-amber-glow);color:var(--accent-amber);font-weight:700;">KUSTOM</span>' : ''}
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${menu.description || (menu.target ? menu.target : '')}</div>
+            </div>
+          </div>
+        </td>
+        <td style="padding:0.75rem 0.85rem;">
+          <span class="perm-cat-pill ${catClass}">${catName}</span>
+        </td>
+        <td style="padding:0.75rem 0.85rem;text-align:center;">
+          <label class="menu-perm-toggle" title="Izinkan Kasir membuka menu ini">
+            <input type="checkbox" data-idx="${idx}" data-field="kasir" ${isKasirChecked ? 'checked' : ''} onchange="toggleMenuPermValue(${idx}, 'kasir', this.checked)">
+            <span class="menu-perm-slider"></span>
+          </label>
+        </td>
+        <td style="padding:0.75rem 0.85rem;text-align:center;">
+          <label class="menu-perm-toggle" title="Aktifkan atau nonaktifkan menu ini secara global">
+            <input type="checkbox" data-idx="${idx}" data-field="active" ${isActiveChecked ? 'checked' : ''} onchange="toggleMenuPermValue(${idx}, 'active', this.checked)">
+            <span class="menu-perm-slider"></span>
+          </label>
+        </td>
+        <td style="padding:0.75rem 0.85rem;text-align:center;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
+            <button type="button" onclick="quickToggleMenu(${idx})" style="padding:3px 8px;font-size:0.74rem;font-weight:700;border:1px solid var(--border-medium);background:var(--bg-input);color:var(--text-main);border-radius:4px;cursor:pointer;">
+              ${isActiveChecked ? 'Sembunyikan' : '+ Munculkan'}
+            </button>
+            ${isCustom ? `
+              <button type="button" onclick="deleteCustomMenu(${idx})" title="Hapus menu kustom ini" style="padding:3px 6px;font-size:0.74rem;font-weight:700;border:1px solid #ef4444;background:rgba(239,68,68,0.1);color:#ef4444;border-radius:4px;cursor:pointer;">
+                🗑️
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function toggleMenuPermValue(idx, field, value) {
+  if (currentMenuPermissions[idx]) {
+    currentMenuPermissions[idx][field] = value;
+  }
+}
+
+function quickToggleMenu(idx) {
+  if (currentMenuPermissions[idx]) {
+    currentMenuPermissions[idx].active = !currentMenuPermissions[idx].active;
+    renderMenuPermissionsTable();
+    applyMenuPermissionsUI();
+  }
+}
+
+function toggleAddMenuBox() {
+  const container = document.getElementById('add-menu-form-container');
+  const chevron = document.getElementById('add-menu-chevron');
+  if (!container) return;
+  const isHidden = container.style.display === 'none';
+  container.style.display = isHidden ? 'block' : 'none';
+  if (chevron) chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+
+function setNewMenuEmoji(emoji) {
+  const iconInput = document.getElementById('new-menu-icon');
+  if (iconInput) iconInput.value = emoji;
+}
+
+function toggleNewMenuActionUI(type) {
+  const label = document.getElementById('new-menu-target-label');
+  const input = document.getElementById('new-menu-target');
+  if (!label || !input) return;
+  if (type === 'url') {
+    label.textContent = 'URL TAUTAN (misal https://merchant.grab.com atau link spreadsheet)';
+    input.placeholder = 'https://...';
+  } else {
+    label.textContent = 'TARGET MODUL (misal view-reports, view-inventory, view-tables)';
+    input.placeholder = 'view-reports';
+  }
+}
+
+function addNewCustomMenu() {
+  const label = (document.getElementById('new-menu-label')?.value || '').trim();
+  const icon = (document.getElementById('new-menu-icon')?.value || '⭐').trim();
+  const cat = document.getElementById('new-menu-cat')?.value || 'operasional';
+  const actionType = document.getElementById('new-menu-action')?.value || 'url';
+  const target = (document.getElementById('new-menu-target')?.value || '').trim();
+  const desc = (document.getElementById('new-menu-desc')?.value || '').trim();
+  const kasir = document.getElementById('new-menu-kasir')?.checked ?? true;
+  const active = document.getElementById('new-menu-active')?.checked ?? true;
+
+  if (!label) {
+    api.showToast('Nama menu wajib diisi!', 'warning');
+    return;
+  }
+
+  const newMenu = {
+    id: 'custom-' + Date.now(),
+    label: label,
+    icon: icon || '⭐',
+    category: cat,
+    actionType: actionType,
+    target: target || '#',
+    description: desc || (actionType === 'url' ? target : 'Modul kustom toko'),
+    kasir: kasir,
+    admin: true,
+    active: active,
+    isCustom: true
+  };
+
+  currentMenuPermissions.push(newMenu);
+  localStorage.setItem('teras_menu_permissions', JSON.stringify(currentMenuPermissions));
+  try {
+    api.saveMenuPermissions(currentMenuPermissions);
+  } catch (e) {
+    console.warn('Gagal sinkron server:', e);
+  }
+
+  renderMenuPermissionsTable();
+  applyMenuPermissionsUI();
+
+  // Reset form
+  const lblInp = document.getElementById('new-menu-label');
+  if (lblInp) lblInp.value = '';
+  const tgtInp = document.getElementById('new-menu-target');
+  if (tgtInp) tgtInp.value = '';
+  const dscInp = document.getElementById('new-menu-desc');
+  if (dscInp) dscInp.value = '';
+
+  api.showToast(`Menu "${label}" berhasil ditambahkan ke ${cat.toUpperCase()}!`, 'success');
+}
+
+function deleteCustomMenu(idx) {
+  const menu = currentMenuPermissions[idx];
+  if (!menu) return;
+  if (!confirm(`Hapus menu kustom "${menu.label}"?`)) return;
+
+  currentMenuPermissions.splice(idx, 1);
+  localStorage.setItem('teras_menu_permissions', JSON.stringify(currentMenuPermissions));
+  try {
+    api.saveMenuPermissions(currentMenuPermissions);
+  } catch (e) {
+    console.warn('Gagal sinkron server:', e);
+  }
+
+  renderMenuPermissionsTable();
+  applyMenuPermissionsUI();
+  api.showToast(`Menu "${menu.label}" berhasil dihapus.`, 'info');
+}
+
+function handleCustomMenuClick(menuId) {
+  const menu = currentMenuPermissions.find(m => m.id === menuId);
+  if (!menu) return;
+
+  if (menu.actionType === 'url' && menu.target) {
+    window.open(menu.target, '_blank');
+  } else if (menu.actionType === 'view' && menu.target) {
+    navigateToView(menu.target);
+  } else {
+    api.showToast(`Membuka menu: ${menu.label}`, 'info');
+  }
+}
+
+async function saveMenuPermissionsFromModal() {
+  localStorage.setItem('teras_menu_permissions', JSON.stringify(currentMenuPermissions));
+  try {
+    await api.saveMenuPermissions(currentMenuPermissions);
+  } catch (e) {
+    console.warn('Gagal simpan ke server, tersimpan lokal:', e);
+  }
+  applyMenuPermissionsUI();
+  api.showToast('Hak akses menu berhasil disimpan & disinkronkan!', 'success');
+  closeMenuPermissionsModal();
+}
+
+function resetDefaultMenuPermissions() {
+  currentMenuPermissions = JSON.parse(JSON.stringify(DEFAULT_MENU_PERMISSIONS));
+  localStorage.setItem('teras_menu_permissions', JSON.stringify(currentMenuPermissions));
+  try {
+    api.saveMenuPermissions(currentMenuPermissions);
+  } catch (e) {}
+  renderMenuPermissionsTable();
+  applyMenuPermissionsUI();
+  api.showToast('Hak akses menu dikembalikan ke standar awal.', 'info');
+}
+
 function toggleSidebarUserMenu(e) {
   if (e) e.stopPropagation();
   const dropdown = document.getElementById('profile-dropdown-menu');
   if (dropdown) {
     dropdown.classList.toggle('show');
   }
-}
-
-function openSubscribeModal() {
-  const modal = document.getElementById('subscribe-modal');
-  if (modal) modal.classList.add('active');
-}
-
-function closeSubscribeModal() {
-  const modal = document.getElementById('subscribe-modal');
-  if (modal) modal.classList.remove('active');
 }
 
 function openCustomersModal() {
@@ -2059,7 +2487,25 @@ function openInventoryTab(tab) {
 // ==========================================================================
 async function loadFloorMap() {
   try {
-    const tables = await api.getTables(state.activeOutletId);
+    let tables;
+    try {
+      tables = await api.getTables(state.activeOutletId || 1);
+    } catch (apiErr) {
+      console.warn('loadFloorMap tables fetch note:', apiErr);
+      tables = (state.tables && state.tables.length > 0) ? state.tables : [];
+    }
+
+    if (!Array.isArray(tables) || tables.length === 0) {
+      tables = (state.tables && state.tables.length > 0) ? state.tables : [
+        { id: 1, table_number: '01', table_no: '01', capacity: 2, status: 'available', group_name: 'Indoor AC' },
+        { id: 2, table_number: '02', table_no: '02', capacity: 4, status: 'occupied', group_name: 'Indoor AC' },
+        { id: 3, table_number: '03', table_no: '03', capacity: 4, status: 'available', group_name: 'Indoor AC' },
+        { id: 4, table_number: '04', table_no: '04', capacity: 6, status: 'available', group_name: 'VIP' },
+        { id: 5, table_number: '05', table_no: '05', capacity: 4, status: 'available', group_name: 'Outdoor' },
+        { id: 6, table_number: '06', table_no: '06', capacity: 4, status: 'available', group_name: 'Outdoor' }
+      ];
+    }
+
     state.tables = tables;
 
     // 1. Calculate & Render KPI Metrics
@@ -2085,7 +2531,7 @@ async function loadFloorMap() {
     const activeZone = state.activeFloorZone || 'all';
     const filteredTables = tables.filter(t => {
       if (activeZone === 'all') return true;
-      const group = (t.group_name || '').toLowerCase();
+      const group = (t.group_name || t.location || '').toLowerCase();
       if (activeZone === 'Indoor AC') {
         return group.includes('indoor') || group.includes('ac') || (!group.includes('outdoor') && !group.includes('vip'));
       }
@@ -2126,13 +2572,14 @@ async function loadFloorMap() {
         badgeLabel = '🟡 Reservasi';
       }
 
-      if ((t.group_name || '').toLowerCase().includes('vip')) {
+      const groupName = t.group_name || t.location || 'Indoor AC';
+      if (groupName.toLowerCase().includes('vip')) {
         icon = '🛋️';
       }
 
-      const tableNumber = (t.table_number !== null && t.table_number !== undefined && t.table_number !== '' && t.table_number !== 'undefined') ? t.table_number : 0;
-      const groupName = t.group_name || 'Indoor AC';
-      const capacity = (t.capacity !== null && t.capacity !== undefined && !isNaN(Number(t.capacity))) ? Number(t.capacity) : 0;
+      const rawNum = (t.table_number !== null && t.table_number !== undefined && t.table_number !== '' && t.table_number !== 'undefined') ? t.table_number : (t.table_no || t.id || '1');
+      const tableNumber = String(rawNum).padStart(2, '0');
+      const capacity = (t.capacity !== null && t.capacity !== undefined && !isNaN(Number(t.capacity))) ? Number(t.capacity) : 4;
 
       return `
         <div class="table-node ${tableStatus}" onclick="openTableStatusModal(${t.id})" title="Klik untuk ubah status meja atau buka di kasir">
@@ -2152,7 +2599,9 @@ async function loadFloorMap() {
 
   } catch (err) {
     console.error('Floor map error:', err);
-    api.showToast(`Gagal memuat denah meja: ${err.message}`, 'error');
+    if (!state.tables || state.tables.length === 0) {
+      api.showToast(`Denah meja dalam mode offline`, 'info');
+    }
   }
 }
 
@@ -2173,11 +2622,13 @@ function openTableStatusModal(tableId) {
   const modalSubtitle = document.getElementById('table-modal-subtitle');
   const inputId = document.getElementById('table-modal-id');
 
-  const tableNumber = (table.table_number !== null && table.table_number !== undefined && table.table_number !== '' && table.table_number !== 'undefined') ? table.table_number : 0;
-  const capacity = (table.capacity !== null && table.capacity !== undefined && !isNaN(Number(table.capacity))) ? Number(table.capacity) : 0;
+  const rawNum = (table.table_number !== null && table.table_number !== undefined && table.table_number !== '' && table.table_number !== 'undefined') ? table.table_number : (table.table_no || table.id || '1');
+  const tableNumber = String(rawNum).padStart(2, '0');
+  const capacity = (table.capacity !== null && table.capacity !== undefined && !isNaN(Number(table.capacity))) ? Number(table.capacity) : 4;
+  const groupName = table.group_name || table.location || 'Indoor AC';
 
   if (modalName) modalName.innerText = `Meja ${tableNumber}`;
-  if (modalSubtitle) modalSubtitle.innerHTML = `Area: <strong>${table.group_name || 'Indoor AC'}</strong> &bull; Kapasitas: <strong>${capacity} Orang</strong>`;
+  if (modalSubtitle) modalSubtitle.innerHTML = `Area: <strong>${groupName}</strong> &bull; Kapasitas: <strong>${capacity} Orang</strong>`;
   if (inputId) inputId.value = table.id;
 
   selectStatusOptionChoice(table.status || 'available');
@@ -2424,6 +2875,321 @@ async function voidTrx(trxId) {
   }
 }
 
+// ==========================================================================
+// REPORTS MODULE — Tab switching + 5 loaders
+// ==========================================================================
+
+function _reportEmptyRow(cols, msg = 'Tidak ada data') {
+  return `<tr><td colspan="${cols}" style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.83rem;">${msg}</td></tr>`;
+}
+
+function switchReportTab(tab) {
+  document.querySelectorAll('.report-tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.report-tab-panel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`.report-tab-btn[data-tab="${tab}"]`);
+  const panel = document.getElementById(`report-tab-${tab}`);
+  if (btn) btn.classList.add('active');
+  if (panel) panel.classList.add('active');
+
+  // Auto-load on first switch
+  if (tab === 'harian') loadDailyReport();
+  if (tab === 'bulanan') loadMonthlyReport();
+  if (tab === 'keuntungan') loadProfitReport();
+  if (tab === 'modal') loadStockValueReport();
+}
+
+// ── LAPORAN HARIAN ──────────────────────────────────────────────────────────
+async function loadDailyReport() {
+  try {
+    const dateEl = document.getElementById('rpt-daily-date');
+    const date = dateEl ? dateEl.value : null;
+    const data = await api.getDailyReport(state.activeOutletId, date || null);
+    const s = data.summary || {};
+
+    _setText('daily-net-sales', api.formatRupiah(s.net_sales || 0));
+    _setText('daily-profit',    api.formatRupiah(s.gross_profit || 0));
+    _setText('daily-margin',    `${s.profit_margin || 0}%`);
+    _setText('daily-trx-count', s.total_transactions || 0);
+    _setText('daily-avg-trx',   api.formatRupiah(s.avg_transaction || 0));
+    _setText('daily-cogs',      api.formatRupiah(s.cogs || 0));
+
+    // Hourly
+    const hourlyBody = document.getElementById('daily-hourly-body');
+    const hourlyRows = (data.hourly_breakdown || []);
+    hourlyBody.innerHTML = hourlyRows.length
+      ? hourlyRows.map(r => `<tr>
+          <td>${r.hour}:00</td>
+          <td class="num">${r.trx_count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total_sales || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Payment methods
+    const pmBody = document.getElementById('daily-payment-body');
+    const pmRows = (data.payment_methods || []);
+    pmBody.innerHTML = pmRows.length
+      ? pmRows.map(r => `<tr>
+          <td>${r.method || '-'}</td>
+          <td class="num">${r.count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Top items
+    const itemsBody = document.getElementById('daily-items-body');
+    const itemRows = (data.top_items || []);
+    itemsBody.innerHTML = itemRows.length
+      ? itemRows.map((r, i) => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cogs || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(7);
+
+  } catch (err) {
+    console.error('Daily report error:', err);
+  }
+}
+
+// ── LAPORAN BULANAN ──────────────────────────────────────────────────────────
+async function loadMonthlyReport() {
+  try {
+    const monthEl = document.getElementById('rpt-month-month');
+    const yearEl  = document.getElementById('rpt-month-year');
+    const month = monthEl ? parseInt(monthEl.value) : null;
+    const year  = yearEl  ? parseInt(yearEl.value)  : null;
+    const data = await api.getMonthlyReport(state.activeOutletId, year || null, month || null);
+    const s = data.summary || {};
+
+    _setText('monthly-net-sales',   api.formatRupiah(s.net_sales || 0));
+    _setText('monthly-profit',      api.formatRupiah(s.gross_profit || 0));
+    _setText('monthly-margin',      `${s.profit_margin || 0}%`);
+    _setText('monthly-trx-count',   s.total_transactions || 0);
+    _setText('monthly-active-days', s.active_days || 0);
+    _setText('monthly-avg-day',     api.formatRupiah(s.avg_per_day || 0));
+
+    // Daily breakdown
+    const dailyBody = document.getElementById('monthly-daily-body');
+    const dailyRows = (data.daily_breakdown || []);
+    dailyBody.innerHTML = dailyRows.length
+      ? dailyRows.map(r => `<tr>
+          <td>${r.day || '-'}</td>
+          <td class="num">${r.trx_count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total_sales || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Categories
+    const catBody = document.getElementById('monthly-cat-body');
+    const catRows = (data.categories || []);
+    catBody.innerHTML = catRows.length
+      ? catRows.map(r => `<tr>
+          <td>${r.category_name || '-'}</td>
+          <td class="num">${r.qty_sold || 0}</td>
+          <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    // Top items
+    const itemsBody = document.getElementById('monthly-items-body');
+    const itemRows = (data.top_items || []);
+    itemsBody.innerHTML = itemRows.length
+      ? itemRows.map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+  } catch (err) {
+    console.error('Monthly report error:', err);
+  }
+}
+
+// ── LAPORAN KUSTOM ──────────────────────────────────────────────────────────
+async function loadCustomReport() {
+  try {
+    const startDate = document.getElementById('rpt-custom-start')?.value;
+    const endDate   = document.getElementById('rpt-custom-end')?.value;
+    if (!startDate || !endDate) {
+      api.showToast('Pilih tanggal mulai dan tanggal akhir terlebih dahulu.', 'info');
+      return;
+    }
+    const data = await api.getCustomReport(state.activeOutletId, startDate, endDate);
+    const s = data.summary || {};
+
+    _setText('custom-net-sales',   api.formatRupiah(s.net_sales || 0));
+    _setText('custom-profit',      api.formatRupiah(s.gross_profit || 0));
+    _setText('custom-margin',      `${s.profit_margin || 0}%`);
+    _setText('custom-trx-count',   s.total_transactions || 0);
+    _setText('custom-active-days', s.active_days || 0);
+    _setText('custom-avg-day',     api.formatRupiah(s.avg_per_day || 0));
+
+    const dailyBody = document.getElementById('custom-daily-body');
+    const dailyRows = (data.daily_breakdown || []);
+    dailyBody.innerHTML = dailyRows.length
+      ? dailyRows.map(r => `<tr>
+          <td>${r.day || '-'}</td>
+          <td class="num">${r.trx_count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total_sales || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    const pmBody = document.getElementById('custom-payment-body');
+    pmBody.innerHTML = (data.payment_methods || []).length
+      ? (data.payment_methods).map(r => `<tr>
+          <td>${r.method || '-'}</td>
+          <td class="num">${r.count || 0}</td>
+          <td class="num">${api.formatRupiah(r.total || 0)}</td>
+        </tr>`).join('')
+      : _reportEmptyRow(3);
+
+    const itemsBody = document.getElementById('custom-items-body');
+    itemsBody.innerHTML = (data.top_items || []).length
+      ? (data.top_items).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cogs || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(7);
+
+  } catch (err) {
+    console.error('Custom report error:', err);
+  }
+}
+
+// ── LAPORAN KEUNTUNGAN ───────────────────────────────────────────────────────
+async function loadProfitReport() {
+  try {
+    const period    = document.getElementById('rpt-profit-period')?.value || 'this_month';
+    const startDate = document.getElementById('rpt-profit-start')?.value || null;
+    const endDate   = document.getElementById('rpt-profit-end')?.value || null;
+    const data = await api.getProfitReport(state.activeOutletId, period, startDate || null, endDate || null);
+    const s = data.summary || {};
+
+    _setText('profit-net-sales', api.formatRupiah(s.net_sales || 0));
+    _setText('profit-cogs',      api.formatRupiah(s.total_cogs || 0));
+    _setText('profit-gross',     api.formatRupiah(s.gross_profit || 0));
+    _setText('profit-margin',    `${s.profit_margin || 0}%`);
+
+    // Categories
+    const catBody = document.getElementById('profit-cat-body');
+    catBody.innerHTML = (data.categories || []).length
+      ? (data.categories).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.category_name}</strong></td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num">${api.formatRupiah(r.revenue || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cogs || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+    // Items
+    const itemsBody = document.getElementById('profit-items-body');
+    itemsBody.innerHTML = (data.items || []).length
+      ? (data.items).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong><br><span style="font-size:0.72rem;color:var(--text-muted);">${r.category_name || ''}</span></td>
+            <td class="num">${api.formatRupiah(r.sell_price || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cost_price || 0)}</td>
+            <td class="num">${r.qty_sold || 0}</td>
+            <td class="num green">${api.formatRupiah(r.profit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+  } catch (err) {
+    console.error('Profit report error:', err);
+  }
+}
+
+// ── LAPORAN MODAL BARANG ─────────────────────────────────────────────────────
+async function loadStockValueReport() {
+  try {
+    const data = await api.getStockValueReport(state.activeOutletId);
+
+    _setText('stock-total-value',       api.formatRupiah(data.total_ingredient_stock_value || 0));
+    _setText('stock-total-ingredients', data.total_ingredients || 0);
+    _setText('stock-low-count',         data.low_stock_count || 0);
+
+    // Ingredient stocks
+    const ingBody = document.getElementById('stock-ingredients-body');
+    ingBody.innerHTML = (data.ingredients || []).length
+      ? (data.ingredients).map(r => {
+          const isLow = r.is_low;
+          const badge = isLow
+            ? '<span class="badge-low">⚠ Menipis</span>'
+            : '<span class="badge-ok">✓ Aman</span>';
+          return `<tr>
+            <td><strong>${r.name}</strong></td>
+            <td class="muted">${r.unit || '-'}</td>
+            <td class="num ${isLow ? 'red' : ''}">${(r.current_stock || 0).toLocaleString('id-ID')}</td>
+            <td class="num">${api.formatRupiah(r.cost_per_unit || 0)}</td>
+            <td class="num">${api.formatRupiah(r.stock_value || 0)}</td>
+            <td>${badge}</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+    // Menu items HPP
+    const menuBody = document.getElementById('stock-menu-body');
+    menuBody.innerHTML = (data.menu_items || []).length
+      ? (data.menu_items).map(r => {
+          const margin = r.margin || 0;
+          const marginCls = margin >= 30 ? 'green' : margin >= 10 ? '' : 'red';
+          return `<tr>
+            <td><strong>${r.item_name}</strong></td>
+            <td class="muted">${r.category_name || '-'}</td>
+            <td class="num">${api.formatRupiah(r.sell_price || 0)}</td>
+            <td class="num muted">${api.formatRupiah(r.cost_price || 0)}</td>
+            <td class="num green">${api.formatRupiah(r.profit_per_unit || 0)}</td>
+            <td class="num ${marginCls}">${margin}%</td>
+          </tr>`;
+        }).join('')
+      : _reportEmptyRow(6);
+
+  } catch (err) {
+    console.error('Stock value report error:', err);
+  }
+}
+
+// Helper: set text content safely
+function _setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = (val === null || val === undefined || val !== val) ? '0' : String(val);
+}
+
 function openCloseShiftModal() {
   document.getElementById('close-shift-modal').classList.add('active');
 }
@@ -2522,7 +3288,7 @@ function setupEventListeners() {
     }
 
     if (e.key === 'Escape') {
-      closeSubscribeModal();
+      closeMenuPermissionsModal();
       closeCustomersModal();
       closePartnerSolutionsModal();
       closeTutorialsModal();
@@ -4075,6 +4841,7 @@ function openSettingsTab(subTab = 'toko', updateHash = true) {
   else if (subTab === 'akun') loadAccountSettings();
   else if (subTab === 'karyawan') loadSettingsEmployees();
   else if (subTab === 'struk') loadReceiptSettings();
+  else if (subTab === 'hakakses') openMenuPermissionsModal();
 }
 
 // --------------------------------------------------------------------------

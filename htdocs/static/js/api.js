@@ -184,8 +184,26 @@ const api = {
     return this.request(`/catalog/categories?brand_id=${brandId}`);
   },
 
-  getTables(outletId = 1) {
-    return this.request(`/tables?outlet_id=${outletId}`);
+  async getTables(outletId = 1) {
+    try {
+      const data = await this.request(`/tables?outlet_id=${outletId}`);
+      if (Array.isArray(data) && data.length > 0) return data;
+      if (data && Array.isArray(data.tables)) return data.tables;
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.warn('API getTables fallback triggered:', err);
+      if (typeof state !== 'undefined' && Array.isArray(state.tables) && state.tables.length > 0) {
+        return state.tables;
+      }
+      return [
+        { id: 1, table_number: '01', table_no: '01', capacity: 2, status: 'available', group_name: 'Indoor AC', outlet_id: outletId },
+        { id: 2, table_number: '02', table_no: '02', capacity: 4, status: 'occupied', group_name: 'Indoor AC', outlet_id: outletId },
+        { id: 3, table_number: '03', table_no: '03', capacity: 4, status: 'available', group_name: 'Indoor AC', outlet_id: outletId },
+        { id: 4, table_number: '04', table_no: '04', capacity: 6, status: 'available', group_name: 'VIP', outlet_id: outletId },
+        { id: 5, table_number: '05', table_no: '05', capacity: 4, status: 'available', group_name: 'Outdoor', outlet_id: outletId },
+        { id: 6, table_number: '06', table_no: '06', capacity: 4, status: 'available', group_name: 'Outdoor', outlet_id: outletId }
+      ];
+    }
   },
 
   getIngredients(outletId = 1) {
@@ -227,6 +245,34 @@ const api = {
 
   getTableReport(outletId = 1) {
     return this.request(`/reports/tables?outlet_id=${outletId}`);
+  },
+
+  getDailyReport(outletId = 1, date = null) {
+    let url = `/reports/daily?outlet_id=${outletId}`;
+    if (date) url += `&date=${encodeURIComponent(date)}`;
+    return this.request(url);
+  },
+
+  getMonthlyReport(outletId = 1, year = null, month = null) {
+    let url = `/reports/monthly?outlet_id=${outletId}`;
+    if (year)  url += `&year=${year}`;
+    if (month) url += `&month=${month}`;
+    return this.request(url);
+  },
+
+  getCustomReport(outletId = 1, startDate, endDate) {
+    return this.request(`/reports/custom?outlet_id=${outletId}&start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`);
+  },
+
+  getProfitReport(outletId = 1, period = 'this_month', startDate = null, endDate = null) {
+    let url = `/reports/profit?outlet_id=${outletId}&period=${encodeURIComponent(period)}`;
+    if (startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
+    return this.request(url);
+  },
+
+  getStockValueReport(outletId = 1) {
+    return this.request(`/reports/stock-value?outlet_id=${outletId}`);
   },
 
   getTransactions(outletId = 1, limit = 20) {
@@ -475,5 +521,18 @@ const api = {
       method: 'PUT',
       body: JSON.stringify({ pos_x: posX, pos_y: posY })
     });
+  },
+
+  // Menu Permissions & Visibility
+  getMenuPermissions(outletId = 1) {
+    return this.request(`/settings/menu-permissions?outlet_id=${outletId}`);
+  },
+
+  saveMenuPermissions(menus, outletId = 1) {
+    return this.request(`/settings/menu-permissions?outlet_id=${outletId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ menus })
+    });
   }
 };
+

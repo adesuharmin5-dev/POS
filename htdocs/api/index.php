@@ -330,17 +330,22 @@ if ($parts[0] === 'tables') {
     if ($method === 'GET') {
         if ($db) {
             try {
-                $rows = $db->query("SELECT * FROM tables ORDER BY table_no ASC")->fetchAll();
-                if ($rows) jsonOut($rows);
-            } catch (Exception $e) {}
+                $rows = $db->query("SELECT t.*, tg.name AS group_name FROM tables t LEFT JOIN table_groups tg ON t.group_id = tg.id ORDER BY t.table_number ASC")->fetchAll();
+                if ($rows && count($rows) > 0) jsonOut($rows);
+            } catch (Exception $e) {
+                try {
+                    $rows = $db->query("SELECT * FROM tables ORDER BY id ASC")->fetchAll();
+                    if ($rows && count($rows) > 0) jsonOut($rows);
+                } catch (Exception $e2) {}
+            }
         }
         jsonOut([
-            ['id' => 1, 'table_no' => 'M01', 'capacity' => 2, 'status' => 'available', 'location' => 'Indoor Depan'],
-            ['id' => 2, 'table_no' => 'M02', 'capacity' => 4, 'status' => 'occupied', 'location' => 'Indoor Tengah'],
-            ['id' => 3, 'table_no' => 'M03', 'capacity' => 4, 'status' => 'available', 'location' => 'Indoor Tengah'],
-            ['id' => 4, 'table_no' => 'M04', 'capacity' => 6, 'status' => 'available', 'location' => 'Indoor Sudut'],
-            ['id' => 5, 'table_no' => 'O01', 'capacity' => 4, 'status' => 'available', 'location' => 'Outdoor Teras'],
-            ['id' => 6, 'table_no' => 'O02', 'capacity' => 4, 'status' => 'available', 'location' => 'Outdoor Teras']
+            ['id' => 1, 'table_number' => '01', 'table_no' => '01', 'capacity' => 2, 'status' => 'available', 'group_name' => 'Indoor AC', 'location' => 'Indoor Depan', 'outlet_id' => 1],
+            ['id' => 2, 'table_number' => '02', 'table_no' => '02', 'capacity' => 4, 'status' => 'occupied', 'group_name' => 'Indoor AC', 'location' => 'Indoor Tengah', 'outlet_id' => 1],
+            ['id' => 3, 'table_number' => '03', 'table_no' => '03', 'capacity' => 4, 'status' => 'available', 'group_name' => 'Indoor AC', 'location' => 'Indoor Tengah', 'outlet_id' => 1],
+            ['id' => 4, 'table_number' => '04', 'table_no' => '04', 'capacity' => 6, 'status' => 'available', 'group_name' => 'VIP', 'location' => 'VIP Lounge', 'outlet_id' => 1],
+            ['id' => 5, 'table_number' => '05', 'table_no' => '05', 'capacity' => 4, 'status' => 'available', 'group_name' => 'Outdoor', 'location' => 'Outdoor Garden', 'outlet_id' => 1],
+            ['id' => 6, 'table_number' => '06', 'table_no' => '06', 'capacity' => 4, 'status' => 'available', 'group_name' => 'Outdoor', 'location' => 'Outdoor Teras', 'outlet_id' => 1]
         ]);
     }
 }
@@ -915,10 +920,57 @@ if ($parts[0] === 'sync') {
     ]);
 }
 
+// -------------------------------------------------------------
+// 12. SETTINGS & MENU PERMISSIONS
+// -------------------------------------------------------------
+if ($parts[0] === 'settings') {
+    $sub = $parts[1] ?? '';
+    if ($sub === 'menu-permissions') {
+        if ($method === 'PUT') {
+            $menus = $input['menus'] ?? [];
+            if ($db) {
+                try {
+                    $jsonStr = json_encode($menus, JSON_UNESCAPED_UNICODE);
+                    $stmt = $db->prepare("INSERT INTO settings (outlet_id, setting_key, setting_value, description) VALUES (1, 'menu_permissions', ?, 'Hak akses menu') ON CONFLICT(outlet_id, setting_key) DO UPDATE SET setting_value = excluded.setting_value");
+                    $stmt->execute([$jsonStr]);
+                } catch (Exception $e) {}
+            }
+            jsonOut(['success' => true, 'message' => 'Hak akses menu berhasil disimpan', 'menus' => $menus]);
+        } else {
+            // GET
+            if ($db) {
+                try {
+                    $stmt = $db->prepare("SELECT setting_value FROM settings WHERE setting_key = 'menu_permissions'");
+                    $stmt->execute();
+                    $row = $stmt->fetch();
+                    if ($row && !empty($row['setting_value'])) {
+                        $parsed = json_decode($row['setting_value'], true);
+                        if ($parsed) jsonOut($parsed);
+                    }
+                } catch (Exception $e) {}
+            }
+            jsonOut([
+                ["id" => "view-pos", "label" => "Kasir POS", "icon" => "🛒", "kasir" => true, "admin" => true, "active" => true, "category" => "operasional", "description" => "Terminal pencatatan pesanan & transaksi kasir"],
+                ["id" => "view-tables", "label" => "Denah Meja", "icon" => "🪑", "kasir" => true, "admin" => true, "active" => true, "category" => "operasional", "description" => "Denah meja visual interaktif & status dine-in"],
+                ["id" => "view-shifts", "label" => "Shift & Riwayat", "icon" => "⏱️", "kasir" => true, "admin" => true, "active" => true, "category" => "operasional", "description" => "Buka/tutup shift kasir dan riwayat transaksi"],
+                ["id" => "view-attendance", "label" => "Absensi Karyawan", "icon" => "👥", "kasir" => true, "admin" => true, "active" => true, "category" => "operasional", "description" => "Pencatatan absensi masuk dan pulang staf"],
+                ["id" => "link-online", "label" => "Katalog Web Online", "icon" => "🌐", "kasir" => true, "admin" => true, "active" => true, "category" => "operasional", "description" => "Halaman web pemesanan mandiri pelanggan"],
+                ["id" => "view-dashboard", "label" => "Dashboard Analitik", "icon" => "📊", "kasir" => false, "admin" => true, "active" => true, "category" => "manajemen", "description" => "Metrik penjualan, laba kotor, dan grafik tren omzet"],
+                ["id" => "view-reports", "label" => "Laporan Keuangan & HPP", "icon" => "📈", "kasir" => false, "admin" => true, "active" => true, "category" => "manajemen", "description" => "Laporan penjualan harian, bulanan, keuntungan & modal"],
+                ["id" => "view-inventory", "label" => "Stok & Resep Gudang", "icon" => "📦", "kasir" => false, "admin" => true, "active" => true, "category" => "manajemen", "description" => "Inventori bahan baku & resep Bill of Materials"],
+                ["id" => "modal-customers", "label" => "Pelanggan & Member", "icon" => "⭐", "kasir" => false, "admin" => true, "active" => true, "category" => "manajemen", "description" => "Daftar pelanggan setia dan poin loyalty"],
+                ["id" => "view-master", "label" => "Master Data Toko", "icon" => "📁", "kasir" => false, "admin" => true, "active" => true, "category" => "sistem", "description" => "Kelola kategori, menu, harga, ukuran, gula, topping"],
+                ["id" => "modal-partners", "label" => "Solusi Mitra POS", "icon" => "🚀", "kasir" => false, "admin" => true, "active" => true, "category" => "sistem", "description" => "Integrasi hardware printer & WhatsApp order"],
+                ["id" => "view-settings", "label" => "Pengaturan Sistem", "icon" => "⚙️", "kasir" => false, "admin" => true, "active" => true, "category" => "sistem", "description" => "Konfigurasi toko, pajak, printer, struk, dan hak akses"]
+            ]);
+        }
+    }
+}
+
 // Fallback Default
 jsonOut([
     'status' => 'online',
-    'app' => 'Teras Manis / Aurora Cafe POS API',
+    'app' => 'Teras Manis POS API',
     'version' => '1.0.0',
     'database_ready' => ($db !== null)
 ]);

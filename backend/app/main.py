@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=APP_NAME,
-    description="Synchronized Backend API and Relational Database for Aurora Cafe POS, integrating all 41 modules.",
+    description="Synchronized Backend API and Relational Database for Teras Manis POS & Management System, integrating all 41 modules.",
     version=VERSION,
     lifespan=lifespan
 )

@@ -1,11 +1,12 @@
 @echo off
-title Aurora Cafe POS & Roastery Server
+title Teras Manis POS & Management System
 cd /d "%~dp0"
 
 echo ========================================================
-echo   AURORA CAFE & ROASTERY - POINT OF SALE
+echo   TERAS MANIS - POINT OF SALE & MANAGEMENT
 echo ========================================================
 echo   Aplikasi POS : http://localhost:8000
+echo   Superadmin   : http://localhost:8000/pos#dashboard
 echo   API Docs     : http://localhost:8000/docs
 echo ========================================================
 echo.

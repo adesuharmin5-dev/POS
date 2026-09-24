@@ -362,9 +362,10 @@ def get_daily_report(conn: sqlite3.Connection, outlet_id: int, date: str = None)
 
     # Transaction list (last 30)
     cursor.execute(f"""
-        SELECT t.transaction_number, t.created_at, t.table_number,
+        SELECT t.transaction_number, t.created_at, COALESCE(tbl.table_number, 'Bungkus / Kasir') AS table_number,
                t.subtotal, t.discount_amount, t.total_amount, t.payment_method
         FROM transactions t
+        LEFT JOIN tables tbl ON t.table_id = tbl.id
         WHERE t.outlet_id = ? AND t.payment_status = 'paid'
           AND {date_clause}
         ORDER BY t.created_at DESC
